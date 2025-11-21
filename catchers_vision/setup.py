@@ -2,6 +2,7 @@ from pathlib import Path
 
 from setuptools import find_packages, setup
 
+
 def recursive_files(prefix, path):
     """
     Recurse over path returning a list of tuples suitable for use with setuptools data_files.
@@ -42,6 +43,7 @@ setup(
     },
     entry_points={
         'console_scripts': [
+            'aruco_detect = catchers_vision.aruco:main'
         ],
     },
 )
