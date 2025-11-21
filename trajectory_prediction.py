@@ -96,7 +96,10 @@ class RLSParabola:
         vy = self.theta[2]
         vz = 2*self.theta[4]*t_hit + self.theta[5]
         vel_vec = np.array([vx, vy, vz])
-        z_new = -vel_vec/np.linalg.norm(vel_vec)
+        vel_mag = np.linalg.norm(vel_vec)
+        if (vel_mag < 1e-9):
+            return self.pos_at(t_hit),eff_quat
+        z_new = -vel_vec/vel_mag
         z_cur = eff_R[:,2]
         w = np.cross(z_cur, z_new)
         w_norm = np.linalg.norm(w)
@@ -105,6 +108,15 @@ class RLSParabola:
             th = angle_between(z_cur, z_new)
             w_brac = mr.VecToso3(w/w_norm*th)
             R_rot = mr.MatrixExp3(w_brac)
+        else:
+            if np.dot(z_cur,z_new) < 0:
+                tmp = np.array([1.0, 0.0, 0.0])
+                if abs(np.dot(tmp, z_cur)) > 0.9:
+                    tmp = np.array([0.0, 1.0, 0.0])
+                axis = np.cross(z_cur, tmp)
+                axis /= np.linalg.norm(axis)
+                w_brac = mr.VecToso3(axis * np.pi)
+                R_rot = mr.MatrixExp3(w_brac)
         R_g = R_rot @ eff_R
         T_g = np.eye(4)
         T_g[:3, :3] = R_g
@@ -115,9 +127,9 @@ class RLSParabola:
  
 t = np.linspace(0,1,10)
 
-vx = 0
+vx = -2
 vy = 0
-x_vals = vx*t + 0.3
+x_vals = vx*t + 0.4
 y_vals = vy*t 
 z_vals = 1 - 4.9*t**2
 noise_std = 0.01
