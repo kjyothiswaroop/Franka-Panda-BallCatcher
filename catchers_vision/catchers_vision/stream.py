@@ -3,7 +3,7 @@ import numpy as np
 import pyrealsense2 as rs
 
 lower_green = np.array([15, 65, 50])
-upper_green = np.array([45, 255, 200])
+upper_green = np.array([35, 255, 200])
 
 
 class Stream():
