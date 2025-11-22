@@ -2,9 +2,18 @@ import cv2
 import numpy as np
 import pyrealsense2 as rs
 
-lower_green = np.array([15, 65, 50])
-upper_green = np.array([35, 255, 200])
+lower_tennis = np.array([15, 65, 50])
+upper_tennis = np.array([35, 255, 200])
 
+lower_green = np.array([50, 150, 0])
+upper_green = np.array([80, 255, 170])
+
+# Not a great color threshold
+lower_red = np.array([0, 30, 30])
+upper_red = np.array([3, 255, 210])
+
+lower_orange = np.array([0, 185, 100])
+upper_orange = np.array([15, 255, 255])
 
 class Stream():
     """OpenCV2 Stream Class."""
@@ -92,9 +101,9 @@ class Stream():
         hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
         return hsv
 
-    def threshold_green(self, frame):
+    def threshold_tennis(self, frame):
         """Isolate green color."""
-        mask = cv2.inRange(frame, lower_green, upper_green)
+        mask = cv2.inRange(frame, lower_tennis, upper_tennis)
         return cv2.bitwise_and(
             self.bg_removed, self.bg_removed, mask=mask
         ), mask

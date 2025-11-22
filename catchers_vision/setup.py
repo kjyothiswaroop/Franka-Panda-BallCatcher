@@ -30,8 +30,7 @@ setup(
     },
     entry_points={
         'console_scripts': [
-            'ball_track = catchers_vision.ball_track:main',
-            'traj_pred_node = catchers_vision.traj_pred_node:main'
+            'ball_track = catchers_vision.ball_track:main'
         ],
     },
 )
