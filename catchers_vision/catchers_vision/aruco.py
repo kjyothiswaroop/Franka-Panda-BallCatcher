@@ -79,6 +79,7 @@ class arucoNode(Node):
         # Publishers # noqa: E26
         self.poses_pub = self.create_publisher(PoseArray, 'aruco_poses', 10)
         self.markers_pub = self.create_publisher(ArucoMarkers, 'aruco_markers', 10)
+        self.image_pub = self.create_publisher(Image, self.image_topic + '_axes', 10)
         self.tf_broadcaster = TransformBroadcaster(self)
 
         self.info_msg = None
@@ -172,8 +173,8 @@ class arucoNode(Node):
             if marker_int not in self.aruco_ids:
                 return
 
-        cv2.imshow('camera', cv_image)
-        cv2.waitKey(1)
+        # cv2.imshow('camera', cv_image)
+        # cv2.waitKey(1)
 
         for i, marker_id in enumerate(ids):
             pose = Pose()
@@ -207,8 +208,10 @@ class arucoNode(Node):
                     pose, marker_id[0], markers.header.frame_id, img_msg.header.stamp
                 )
 
+        final_image = self.bridge.cv2_to_imgmsg(cv_image)
         self.poses_pub.publish(pose_array)
         self.markers_pub.publish(markers)
+        self.image_pub.publish(final_image)
 
     def _publish_transform(self, pose, marker_id, frame_id, stamp):
         """Publish the aruco marker transform."""
