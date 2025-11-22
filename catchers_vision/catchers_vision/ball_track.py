@@ -171,23 +171,19 @@ class BallTrack(Node):
     def synced_callback(self, color_msg, depth_msg):
         """Activates ball tracking."""
         if self.state == VisionState.OPENCV:
-            if self.got_intrinsics:
-                color_img = self.bridge.imgmsg_to_cv2(color_msg, desired_encoding='bgr8')
-                depth_img = self.bridge.imgmsg_to_cv2(depth_msg, desired_encoding='passthrough')
-                location, mask = color_threshold(color_img, depth_img, self.intrinsics, self.ball)
-                mask_msg = self.bridge.cv2_to_imgmsg(mask, encoding="mono8")
-                self.image_pub.publish(mask_msg)
-                self.get_logger().info(f'ball detected at {location}')
-                pt = PointStamped()
-                pt.header.stamp = self.get_clock().now().to_msg()
-                pt.point.x = location[0]
-                pt.point.y = location[1]
-                pt.point.z = location[2]
-                self._ball.publish(pt)
-                transform = TransformStamped()
-                transform.header.stamp = self.get_clock().now().to_msg()
-                transform.header.frame_id = 'camera'
-                transform.child_frame_id = 'ball'
+            with stream.Stream() as f:
+                while True:
+                    location = color_threshold(f, self.ball)
+                    pt = PointStamped()
+                    pt.header.stamp = self.get_clock().now().to_msg()
+                    pt.point.x = location[0]
+                    pt.point.y = location[1]
+                    pt.point.z = location[2]
+                    self._ball.publish(pt)
+                    transform = TransformStamped()
+                    transform.header.stamp = self.get_clock().now().to_msg()
+                    transform.header.frame_id = 'camera_color_optical_frame'
+                    transform.child_frame_id = 'ball'
 
                 transform.transform.translation.x = location[0]
                 transform.transform.translation.y = location[1]
