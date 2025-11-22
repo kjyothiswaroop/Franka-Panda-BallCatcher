@@ -15,6 +15,7 @@ upper_red = np.array([3, 255, 210])
 lower_orange = np.array([0, 185, 100])
 upper_orange = np.array([15, 255, 255])
 
+
 class Stream():
     """OpenCV2 Stream Class."""
 
@@ -47,6 +48,7 @@ class Stream():
 
     def record(self, video):
         """Record video stream."""
+        # Align the depth frame to color frame
         self.config.enable_record_tofile(video)
 
     def set_scale(self):

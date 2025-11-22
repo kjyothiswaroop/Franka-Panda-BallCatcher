@@ -32,7 +32,7 @@ def color_threshold(stream):
         frame = stream.capture_frame()
         frame_HSV = stream.convert_color(frame)
         frame_green, mask = stream.threshold_green(frame_HSV)
-        (cx, cy, cz), pnt = stream.find_pen(mask)
+        (cx, cy, cz), pnt = stream.find_ball(mask)
         if cx != -1:
             return np.array([cx, cy, cz])
         else:
@@ -48,6 +48,7 @@ class BallTrack(Node):
         # Establish Broadcasters:
         self.broadcaster = TransformBroadcaster(self)
 
+        self.get_logger().info('ball_track')
         qos_profile = QoSProfile(depth=10)
 
         self.declare_parameter('mode', 'open_cv')
@@ -88,8 +89,13 @@ class BallTrack(Node):
 
 
 def main(args=None):
-    """Entry point for the arena node."""
+    """Entry point for the ball_track node."""
     rclpy.init(args=args)
     node = BallTrack()
     rclpy.spin(node)
     rclpy.shutdown()
+
+
+if __name__ == '__main__':
+    import sys
+    main(sys.argv)
