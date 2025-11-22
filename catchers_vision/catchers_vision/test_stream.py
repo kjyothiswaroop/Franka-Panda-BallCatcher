@@ -113,7 +113,7 @@ def main():
             cv2.namedWindow('Demo Display', cv2.WINDOW_NORMAL)
             cv2.imshow('Demo Display', frame)
 
-            frame_green, mask = f.threshold_tennis(frame_HSV)
+            frame_green, mask = f.threshold_ball(frame_HSV, 'orange')
 
             (cx, cy, cz), pnt = f.find_ball(mask)
 
