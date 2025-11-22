@@ -1,0 +1,5 @@
+<launch>
+  <include file="$(find-pkg-share easy_handeye2)/launch/publish.launch.py">
+    <arg name="name" value="my_eob_calib"/> 
+  </include>
+</launch>

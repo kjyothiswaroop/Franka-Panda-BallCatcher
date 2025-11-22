@@ -6,7 +6,6 @@
     </include>
 
     <include file="$(find-pkg-share realsense2_camera)/launch/rs_launch.py"/>
-    <node pkg="catchers_vision" exec="aruco_detect">
-        <param from="$(find-pkg-share catchers_vision)/config/aruco_params.yaml"/>
-    </node>
+    
+    <include file="$(find-pkg-share catchers_vision)/launch/publish.launch.xml"/>
 </launch>
