@@ -1,6 +1,6 @@
 from enum import auto, Enum
 
-from geometry_msgs.msg import PointStamped
+from geometry_msgs.msg import PointStamped, TransformStamped
 
 import numpy as np
 
@@ -9,6 +9,9 @@ from rclpy.node import Node
 from rclpy.qos import QoSProfile
 
 from std_srvs.srv import Empty
+
+from tf2_ros import TransformBroadcaster
+from tf2_ros.static_transform_broadcaster import StaticTransformBroadcaster
 
 from . import stream
 
@@ -21,7 +24,7 @@ class VisionState(Enum):
     HAAR = auto()
 
 
-def big_boss(stream):
+def color_threshold(stream):
     """Check frame for ball and publishes if present."""
     stream.set_scale()
     stream.align_self()
@@ -33,7 +36,7 @@ def big_boss(stream):
         if cx != -1:
             return np.array([cx, cy, cz])
         else:
-            return None
+            return np.array([-1, -1, -1])
 
 
 class BallTrack(Node):
@@ -42,6 +45,9 @@ class BallTrack(Node):
     def __init__(self):
         """Initialize the ball tracking node."""
         super().__init__('ball_track')
+        # Establish Broadcasters:
+        self.broadcaster = TransformBroadcaster(self)
+
         qos_profile = QoSProfile(depth=10)
 
         self.declare_parameter('mode', 'open_cv')
@@ -55,16 +61,35 @@ class BallTrack(Node):
         )
 
         self._track = self.create_service(Empty, '/track', self.track_callback)
+        self.state = VisionState.OPENCV
 
     def track_callback(self, request, response):
         """Activates ball tracking."""
-        with stream.Stream() as f:
-            while True:
-                location = big_boss(f)
-                if location is not None:
+        if self.state == VisionState.OPENCV:
+            with stream.Stream() as f:
+                while True:
+                    location = color_threshold(f)
                     pt = PointStamped()
                     pt.header.stamp = self.get_clock().now().to_msg()
                     pt.point.x = location[0]
                     pt.point.y = location[1]
                     pt.point.z = location[2]
                     self.ball.publish(pt)
+                    transform = TransformStamped()
+                    transform.header.stamp = self.get_clock().now().to_msg()
+                    transform.header.frame_id = 'camera'
+                    transform.child_frame_id = 'ball'
+
+                    transform.transform.translation.x = location[0]
+                    transform.transform.translation.y = location[1]
+                    transform.transform.translation.z = location[2]
+                    transform.transform.rotation.w = 1.0
+                    self.broadcaster.sendTransform(transform)
+
+
+def main(args=None):
+    """Entry point for the arena node."""
+    rclpy.init(args=args)
+    node = BallTrack()
+    rclpy.spin(node)
+    rclpy.shutdown()

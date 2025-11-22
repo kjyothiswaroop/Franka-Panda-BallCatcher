@@ -30,6 +30,7 @@ setup(
     },
     entry_points={
         'console_scripts': [
+            'ball_track = catchers_vision.ball_track:main'
         ],
     },
 )
