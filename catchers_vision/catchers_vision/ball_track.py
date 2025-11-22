@@ -29,7 +29,7 @@ def big_boss(stream):
         frame = stream.capture_frame()
         frame_HSV = stream.convert_color(frame)
         frame_green, mask = stream.threshold_green(frame_HSV)
-        (cx, cy, cz), pnt = stream.find_pen(mask)
+        (cx, cy, cz), pnt = stream.find_ball(mask)
         if cx != -1:
             return np.array([cx, cy, cz])
         else:
@@ -42,6 +42,7 @@ class BallTrack(Node):
     def __init__(self):
         """Initialize the ball tracking node."""
         super().__init__('ball_track')
+        self.get_logger().info('ball_track')
         qos_profile = QoSProfile(depth=10)
 
         self.declare_parameter('mode', 'open_cv')
@@ -68,3 +69,16 @@ class BallTrack(Node):
                     pt.point.y = location[1]
                     pt.point.z = location[2]
                     self.ball.publish(pt)
+
+def main(args=None):
+    """Entrypoint for pick_node."""
+    rclpy.init(args=args)
+    node = BallTrack()
+    rclpy.spin(node)
+    node.destroy_node()
+    rclpy.shutdown()
+
+
+if __name__ == '__main__':
+    import sys
+    main(sys.argv)

@@ -153,7 +153,6 @@ if __name__ == '__main__':
     print(quat)
     print(goal)
 
-
     ax.plot(x_vals, y_vals, z_vals, linewidth=2)
     ax.plot(x_pred, y_pred, z_pred, linewidth=2)
     ax.scatter(x_n,y_n,z_n)
