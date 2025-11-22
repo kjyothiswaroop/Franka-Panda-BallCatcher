@@ -74,7 +74,9 @@ class Stream():
         # Align the depth frame to color frame
         aligned_frames = self.align.process(frames)
 
-        clipping_distance = 2 / self.depth_scale
+        # clipping distance
+        clipping = 4
+        clipping_distance = clipping / self.depth_scale
 
         # Get aligned frames
         self.aligned_depth_frame = aligned_frames.get_depth_frame() 
@@ -103,9 +105,17 @@ class Stream():
         hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
         return hsv
 
-    def threshold_tennis(self, frame):
-        """Isolate green color."""
-        mask = cv2.inRange(frame, lower_tennis, upper_tennis)
+    def threshold_ball(self, frame, ball):
+        """Isolate ball."""
+        if ball == 'tennis':
+            mask = cv2.inRange(frame, lower_tennis, upper_tennis)
+        elif ball == 'green':
+            mask = cv2.inRange(frame, lower_green, upper_green)
+        elif ball == 'red':
+            mask = cv2.inRange(frame, lower_red, upper_red)
+        else:
+            mask = cv2.inRange(frame, lower_orange, upper_orange)
+
         return cv2.bitwise_and(
             self.bg_removed, self.bg_removed, mask=mask
         ), mask
@@ -118,6 +128,15 @@ class Stream():
             return (-1, -1, -1), np.array([0, 0])
         elif len(contours) >= 1:
             cnt = max(contours, key=cv2.contourArea)
+            area = cv2.contourArea(cnt)
+            # if area < 30:
+            #     return (-1, -1, -1), np.array([0, 0])
+            perimeter = cv2.arcLength(cnt, True)
+            if perimeter != 0:
+                circularity = 4 * np.pi * (area / (perimeter * perimeter))
+                if circularity < 0.6:
+                    return (-1, -1, -1), np.array([0, 0])
+
             M = cv2.moments(cnt)
             if M['m00'] == 0:
                 return (-1, -1, -1), np.array([0, 0])

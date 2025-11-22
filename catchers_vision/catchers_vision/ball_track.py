@@ -11,7 +11,6 @@ from rclpy.qos import QoSProfile
 from std_srvs.srv import Empty
 
 from tf2_ros import TransformBroadcaster
-from tf2_ros.static_transform_broadcaster import StaticTransformBroadcaster
 
 from . import stream
 
@@ -24,14 +23,14 @@ class VisionState(Enum):
     HAAR = auto()
 
 
-def color_threshold(stream):
+def color_threshold(stream, ball):
     """Check frame for ball and publishes if present."""
     stream.set_scale()
     stream.align_self()
     while True:
         frame = stream.capture_frame()
         frame_HSV = stream.convert_color(frame)
-        frame_green, mask = stream.threshold_green(frame_HSV)
+        frame_green, mask = stream.threshold_ball(frame_HSV, ball)
         (cx, cy, cz), pnt = stream.find_ball(mask)
         if cx != -1:
             return np.array([cx, cy, cz])
@@ -52,12 +51,16 @@ class BallTrack(Node):
         qos_profile = QoSProfile(depth=10)
 
         self.declare_parameter('mode', 'open_cv')
+        self.declare_parameter('ball_type', 'green')
 
         self.mode = (
             self.get_parameter('mode').get_parameter_value().string_value
         )
+        self.ball = (
+            self.get_parameter('ball_type').get_parameter_value().string_value
+        )
 
-        self.ball = self.create_publisher(
+        self._ball = self.create_publisher(
             PointStamped, '/ball_pose', qos_profile
         )
 
@@ -69,13 +72,13 @@ class BallTrack(Node):
         if self.state == VisionState.OPENCV:
             with stream.Stream() as f:
                 while True:
-                    location = color_threshold(f)
+                    location = color_threshold(f, self.ball)
                     pt = PointStamped()
                     pt.header.stamp = self.get_clock().now().to_msg()
                     pt.point.x = location[0]
                     pt.point.y = location[1]
                     pt.point.z = location[2]
-                    self.ball.publish(pt)
+                    self._ball.publish(pt)
                     transform = TransformStamped()
                     transform.header.stamp = self.get_clock().now().to_msg()
                     transform.header.frame_id = 'camera'
