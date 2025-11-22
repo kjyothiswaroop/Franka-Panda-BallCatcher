@@ -81,7 +81,7 @@ class BallTrack(Node):
                     self._ball.publish(pt)
                     transform = TransformStamped()
                     transform.header.stamp = self.get_clock().now().to_msg()
-                    transform.header.frame_id = 'camera'
+                    transform.header.frame_id = 'camera_color_optical_frame'
                     transform.child_frame_id = 'ball'
 
                     transform.transform.translation.x = location[0]
