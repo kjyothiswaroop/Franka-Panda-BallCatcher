@@ -8,4 +8,6 @@
     <include file="$(find-pkg-share realsense2_camera)/launch/rs_launch.py"/>
     
     <include file="$(find-pkg-share catchers_vision)/launch/publish.launch.xml"/>
+
+    <node pkg="catchers_vision" exec="ball_track"/>
 </launch>

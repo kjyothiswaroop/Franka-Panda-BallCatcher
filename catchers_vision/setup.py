@@ -43,7 +43,9 @@ setup(
     },
     entry_points={
         'console_scripts': [
-            'aruco_detect = catchers_vision.aruco:main'
+            'aruco_detect = catchers_vision.aruco:main',
+            'ball_track = catchers_vision.ball_track:main',
+            'traj_pred_node = catchers_vision.traj_pred_node:main'
         ],
     },
 )

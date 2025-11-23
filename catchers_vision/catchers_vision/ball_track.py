@@ -77,40 +77,9 @@ def color_threshold(color_img, depth_img, intr, ball):
         frame_green, mask = threshold_ball(frame_HSV, ball)
         (cx, cy, cz), pnt = find_ball(mask, depth_img, intr)
         if cx != -1:
-            return np.array([cx, cy, cz]), mask
+            return np.array([float(cx), float(cy), float(cz)])
         else:
-            return np.array([-1, -1, -1]), mask
-
-
-def find_ball(mask, depth_img, intr):
-    """Locate centroid of ball in 3d space."""
-    ret, thresh = cv2.threshold(mask, 127, 255, 0)
-    contours, hierarchy = cv2.findContours(thresh, 1, 2)
-    if len(contours) < 1:
-        return np.array([-1, -1, -1]), np.array([0, 0])
-    elif len(contours) >= 1:
-        cnt = max(contours, key=cv2.contourArea)
-        area = cv2.contourArea(cnt)
-        if area < 20:
-            return np.array([-1, -1, -1]), np.array([0, 0])
-        perimeter = cv2.arcLength(cnt, True)
-        if perimeter != 0:
-            circularity = 4 * np.pi * (area / (perimeter * perimeter))
-            if circularity < 0.6:
-                return (-1, -1, -1), np.array([0, 0])
-
-        M = cv2.moments(cnt)
-        if M['m00'] == 0:
-            return (-1, -1, -1), np.array([0, 0])
-        cx = int(M['m10']/M['m00'])
-        cy = int(M['m01']/M['m00'])
-        depth = depth_img[cy, cx] * 0.001
-        fx, fy, cx0, cy0 = intr
-        X = (cx - cx0) * depth / fx
-        Y = (cy - cy0) * depth / fy
-        Z = depth
-        point_3d = np.array([X, Y, Z])
-        return point_3d, np.array([cx, cy])
+            return np.array([-1.0, -1.0, -1.0])
 
 
 class BallTrack(Node):
@@ -170,6 +139,8 @@ class BallTrack(Node):
 
     def synced_callback(self, color_msg, depth_msg):
         """Activates ball tracking."""
+        #TODO: Figure out a way to remove the stream thing, because it creates issues with tf tree.
+        #Assume that camera gives you images on a topic and process that into the stream function.
         if self.state == VisionState.OPENCV:
             with stream.Stream() as f:
                 while True:
@@ -180,28 +151,17 @@ class BallTrack(Node):
                     pt.point.y = location[1]
                     pt.point.z = location[2]
                     self._ball.publish(pt)
-                    transform = TransformStamped()
-                    transform.header.stamp = self.get_clock().now().to_msg()
-                    transform.header.frame_id = 'camera_color_optical_frame'
-                    transform.child_frame_id = 'ball'
+                    if pt.point.z != -1.0:
+                        transform = TransformStamped()
+                        transform.header.stamp = self.get_clock().now().to_msg()
+                        transform.header.frame_id = 'camera_color_optical_frame'
+                        transform.child_frame_id = 'ball'
 
-                transform.transform.translation.x = location[0]
-                transform.transform.translation.y = location[1]
-                transform.transform.translation.z = location[2]
-                transform.transform.rotation.w = 1.0
-                self.broadcaster.sendTransform(transform)
-            
-    def camera_info_callback(self, msg):
-        # K = [fx, 0, cx,
-        #      0, fy, cy,
-        #      0, 0, 1]
-        fx = msg.k[0]
-        fy = msg.k[4]
-        cx = msg.k[2]
-        cy = msg.k[5]
-
-        self.intrinsics = (fx, fy, cx, cy)
-        self.got_intrinsics = True
+                        transform.transform.translation.x = location[0]
+                        transform.transform.translation.y = location[1]
+                        transform.transform.translation.z = location[2]
+                        transform.transform.rotation.w = 1.0
+                        self.broadcaster.sendTransform(transform)
 
 
 def main(args=None):
