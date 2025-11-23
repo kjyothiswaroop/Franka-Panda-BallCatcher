@@ -33,9 +33,9 @@ def color_threshold(stream, ball):
         frame_green, mask = stream.threshold_ball(frame_HSV, ball)
         (cx, cy, cz), pnt = stream.find_ball(mask)
         if cx != -1:
-            return np.array([cx, cy, cz])
+            return np.array([float(cx), float(cy), float(cz)])
         else:
-            return np.array([-1, -1, -1])
+            return np.array([-1.0, -1.0, -1.0])
 
 
 class BallTrack(Node):
@@ -69,6 +69,8 @@ class BallTrack(Node):
 
     def track_callback(self, request, response):
         """Activates ball tracking."""
+        #TODO: Figure out a way to remove the stream thing, because it creates issues with tf tree.
+        #Assume that camera gives you images on a topic and process that into the stream function.
         if self.state == VisionState.OPENCV:
             with stream.Stream() as f:
                 while True:
@@ -79,16 +81,17 @@ class BallTrack(Node):
                     pt.point.y = location[1]
                     pt.point.z = location[2]
                     self._ball.publish(pt)
-                    transform = TransformStamped()
-                    transform.header.stamp = self.get_clock().now().to_msg()
-                    transform.header.frame_id = 'camera_color_optical_frame'
-                    transform.child_frame_id = 'ball'
+                    if pt.point.z != -1.0:
+                        transform = TransformStamped()
+                        transform.header.stamp = self.get_clock().now().to_msg()
+                        transform.header.frame_id = 'camera_color_optical_frame'
+                        transform.child_frame_id = 'ball'
 
-                    transform.transform.translation.x = location[0]
-                    transform.transform.translation.y = location[1]
-                    transform.transform.translation.z = location[2]
-                    transform.transform.rotation.w = 1.0
-                    self.broadcaster.sendTransform(transform)
+                        transform.transform.translation.x = location[0]
+                        transform.transform.translation.y = location[1]
+                        transform.transform.translation.z = location[2]
+                        transform.transform.rotation.w = 1.0
+                        self.broadcaster.sendTransform(transform)
 
 
 def main(args=None):
