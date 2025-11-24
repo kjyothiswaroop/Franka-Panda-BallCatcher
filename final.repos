@@ -1,0 +1,9 @@
+repositories:
+  easy_handeye2:
+    type: git
+    url: git@github.com:kjyothiswaroop/easy_handeye2.git
+    version: master
+  final-project-catchers:
+    type: git
+    url: git@github.com:ME495-EmbeddedSystems/final-project-catchers.git
+    version: main
