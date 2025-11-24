@@ -1,3 +1,5 @@
 .vscode
 __pycache__
 pyproject.toml
+catchers_vision/catchers_vision/ball_dataset1/
+catchers_vision/catchers_vision/record_data.py
