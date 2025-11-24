@@ -33,9 +33,11 @@ class Stream():
 
     def __enter__(self):
         """Enable stream."""
-        self.config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
         self.config.enable_stream(
-            rs.stream.color, 640, 480, rs.format.bgr8, 30
+            rs.stream.depth, 424, 240, rs.format.z16, 60
+        )
+        self.config.enable_stream(
+            rs.stream.color, 424, 240, rs.format.bgr8, 60
         )
 
         # Start streaming
@@ -75,11 +77,11 @@ class Stream():
         aligned_frames = self.align.process(frames)
 
         # clipping distance
-        clipping = 4
+        clipping = 50
         clipping_distance = clipping / self.depth_scale
 
         # Get aligned frames
-        self.aligned_depth_frame = aligned_frames.get_depth_frame() 
+        self.aligned_depth_frame = aligned_frames.get_depth_frame()
         # aligned_depth_frame is a 640x480 depth image
         color_frame = aligned_frames.get_color_frame()
 
@@ -129,8 +131,8 @@ class Stream():
         elif len(contours) >= 1:
             cnt = max(contours, key=cv2.contourArea)
             area = cv2.contourArea(cnt)
-            # if area < 30:
-            #     return (-1, -1, -1), np.array([0, 0])
+            if area < 20:
+                return (-1, -1, -1), np.array([0, 0])
             perimeter = cv2.arcLength(cnt, True)
             if perimeter != 0:
                 circularity = 4 * np.pi * (area / (perimeter * perimeter))
