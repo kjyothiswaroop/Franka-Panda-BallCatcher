@@ -5,10 +5,14 @@
         <arg name="demo" value="$(var demo)"/>
     </include>
 
-    <include file="$(find-pkg-share realsense2_camera)/launch/rs_launch.py"/>
+    <include file="$(find-pkg-share realsense2_camera)/launch/rs_launch.py">
+        <arg name="align_depth.enable" value="true"/>
+    </include>
     
-    <node pkg="catchers_vision" exec="aruco_detect">
+    <!-- <node pkg="catchers_vision" exec="aruco_detect">
         <param from="$(find-pkg-share catchers_vision)/config/aruco_params.yaml"/>
-    </node>
-    <!-- <include file="$(find-pkg-share catchers_vision)/launch/publish.launch.xml"/> -->
+    </node> -->
+    <include file="$(find-pkg-share catchers_vision)/launch/publish.launch.xml"/>
+
+    <node pkg="catchers_vision" exec="ball_track"/>
 </launch>
