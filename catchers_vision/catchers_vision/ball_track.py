@@ -101,7 +101,6 @@ class BallTrack(Node):
 
                 depth_img = self.bridge.imgmsg_to_cv2(
                     self.depth_img,
-                    desired_encoding='passthrough'
                 )
 
                 location, mask = self.img_proc.color_threshold(
@@ -111,7 +110,7 @@ class BallTrack(Node):
                     self.ball
                 )
 
-                mask_msg = self.bridge.cv2_to_imgmsg(mask, encoding='mono8')
+                mask_msg = self.bridge.cv2_to_imgmsg(mask)
                 self.image_pub.publish(mask_msg)
 
                 if location[2] != -1.0:
