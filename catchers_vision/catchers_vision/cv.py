@@ -9,8 +9,8 @@ class image_processor():
         self.lower_tennis = np.array([15, 65, 50])
         self.upper_tennis = np.array([35, 255, 200])
 
-        self.lower_green = np.array([50, 150, 0])
-        self.upper_green = np.array([80, 255, 170])
+        self.lower_green = np.array([50, 50, 0])
+        self.upper_green = np.array([80, 255, 240])
 
         #Not a great color threshold # noqa: E26
         self.lower_red = np.array([0, 30, 30])
@@ -43,23 +43,27 @@ class image_processor():
 
     def color_threshold(self, color_img, depth_img, intr, ball):
         """Check frame for ball and publishes if present."""
-        while True:
-            frame = self.capture_frame(color_img, depth_img)
-            if frame is not None:
-                frame_HSV = self.convert_color(frame)
-                frame_green, mask = self.threshold_ball(frame, frame_HSV, ball)
-                (cx, cy, cz), pnt = self.find_ball(mask, depth_img, intr)
-                if cz != -1:
-                    return np.array([float(cx), float(cy), float(cz)]), mask
-                else:
-                    return np.array([-1.0, -1.0, -1.0]), mask
+        frame = self.capture_frame(color_img, depth_img)
+        if frame is not None:
+            frame_HSV = self.convert_color(frame)
+            frame_green, mask = self.threshold_ball(frame, frame_HSV, ball)
+            (cx, cy, cz), cvt_image = self.find_ball(mask, frame_green, depth_img, intr)
+            print(f'CVT IMAGE SHAPE IS: {cvt_image.shape}')
+            if len(cvt_image.shape) == 3:
+                image_processed = np.hstack((frame, cvt_image))
             else:
-                return None
+                image_processed = mask
+            if cz != -1:
+                return np.array([float(cx), float(cy), float(cz)]), image_processed
+            else:
+                return np.array([-1.0, -1.0, -1.0]), image_processed
+        else:
+            return None, None
 
-    def find_ball(self, mask, depth_img, intr):
+    def find_ball(self, mask, cvt_image, depth_img, intr):
         """Locate centroid of ball in 3d space."""
-        ret, thresh = cv2.threshold(mask, 127, 255, 0)
-        contours, hierarchy = cv2.findContours(thresh, 1, 2)
+        # qqret, thresh = cv2.threshold(mask, 127, 255, 0)
+        contours, hierarchy = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
         if len(contours) < 1:
             return np.array([-1, -1, -1]), np.array([0, 0])
@@ -89,15 +93,25 @@ class image_processor():
             Y = (cy - cy0) * depth / fy
             Z = depth
             point_3d = np.array([X, Y, Z])
-
-            return point_3d, np.array([cx, cy])
+            cv2.drawContours(cvt_image, [cnt], -1, (0, 255, 0), 2)
+            cv2.circle(cvt_image, (cx, cy), 5, (0, 0, 255), -1)
+            cv2.putText(
+                cvt_image,
+                f'({round(X, 3)},{round(Y, 3)},{round(Z, 3)})',
+                (cx + 10, cy - 10),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.5,
+                (255, 0, 0),
+                2
+            )
+            return point_3d, cvt_image
 
     def capture_frame(self, color_img, depth_img):
         """Capture frame function to clip depth."""
         if color_img is None or depth_img is None:
             return None
 
-        clipping_distance = 4 / self.depth_scale
+        clipping_distance = 8 / self.depth_scale
         depth_image_3d = np.dstack((depth_img, depth_img, depth_img))
         grey_color = 153
 
