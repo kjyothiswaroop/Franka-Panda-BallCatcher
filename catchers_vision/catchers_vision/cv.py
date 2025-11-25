@@ -48,9 +48,8 @@ class image_processor():
             frame_HSV = self.convert_color(frame)
             frame_green, mask = self.threshold_ball(frame, frame_HSV, ball)
             (cx, cy, cz), cvt_image = self.find_ball(mask, frame_green, depth_img, intr)
-            print(f'CVT IMAGE SHAPE IS: {cvt_image.shape}')
             if len(cvt_image.shape) == 3:
-                image_processed = np.hstack((frame, cvt_image))
+                image_processed = cvt_image
             else:
                 image_processed = mask
             if cz != -1:
@@ -64,25 +63,26 @@ class image_processor():
         """Locate centroid of ball in 3d space."""
         # qqret, thresh = cv2.threshold(mask, 127, 255, 0)
         contours, hierarchy = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
+        h, w = mask.shape
+        empty_img = np.zeros((h, w, 3), dtype=np.uint8)
         if len(contours) < 1:
-            return np.array([-1, -1, -1]), np.array([0, 0])
+            return np.array([-1, -1, -1]), empty_img
 
         elif len(contours) >= 1:
             cnt = max(contours, key=cv2.contourArea)
             area = cv2.contourArea(cnt)
             if area < 20:
-                return np.array([-1, -1, -1]), np.array([0, 0])
+                return np.array([-1, -1, -1]), empty_img
             perimeter = cv2.arcLength(cnt, True)
 
             if perimeter != 0:
                 circularity = 4 * np.pi * (area / (perimeter * perimeter))
                 if circularity < 0.6:
-                    return (-1, -1, -1), np.array([0, 0])
+                    return (-1, -1, -1), empty_img
 
             M = cv2.moments(cnt)
             if M['m00'] == 0:
-                return (-1, -1, -1), np.array([0, 0])
+                return (-1, -1, -1), empty_img
 
             cx = int(M['m10']/M['m00'])
             cy = int(M['m01']/M['m00'])
