@@ -9,8 +9,8 @@ class image_processor():
         self.lower_tennis = np.array([15, 65, 50])
         self.upper_tennis = np.array([35, 255, 200])
 
-        self.lower_green = np.array([50, 50, 0])
-        self.upper_green = np.array([80, 255, 240])
+        self.lower_green = np.array([50, 50, 86])
+        self.upper_green = np.array([86, 255, 169])
 
         #Not a great color threshold # noqa: E26
         self.lower_red = np.array([0, 30, 30])
@@ -75,10 +75,10 @@ class image_processor():
                 return np.array([-1, -1, -1]), empty_img
             perimeter = cv2.arcLength(cnt, True)
 
-            if perimeter != 0:
-                circularity = 4 * np.pi * (area / (perimeter * perimeter))
-                if circularity < 0.6:
-                    return (-1, -1, -1), empty_img
+            # if perimeter != 0:
+            #     circularity = 4 * np.pi * (area / (perimeter * perimeter))
+            #     if circularity < 0.6:
+            #         return (-1, -1, -1), empty_img
 
             M = cv2.moments(cnt)
             if M['m00'] == 0:
