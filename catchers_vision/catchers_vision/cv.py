@@ -74,7 +74,7 @@ class image_processor():
         elif len(contours) >= 1:
             cnt = max(contours, key=cv2.contourArea)
             area = cv2.contourArea(cnt)
-            if area < 20:
+            if area < 15:
                 return np.array([-1, -1, -1]), empty_img
             # perimeter = cv2.arcLength(cnt, True)
 

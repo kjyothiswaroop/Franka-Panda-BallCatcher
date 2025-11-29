@@ -1,6 +1,3 @@
-import cv2
-from cv_bridge import CvBridge
-
 from enum import auto, Enum
 
 from cv_bridge import CvBridge
@@ -13,19 +10,6 @@ from sensor_msgs.msg import CameraInfo, Image
 from tf2_ros import TransformBroadcaster
 
 from . import cv
-
-lower_tennis = np.array([15, 65, 50])
-upper_tennis = np.array([35, 255, 200])
-
-lower_green = np.array([50, 150, 0])
-upper_green = np.array([80, 255, 170])
-
-# Not a great color threshold
-lower_red = np.array([0, 30, 30])
-upper_red = np.array([3, 255, 210])
-
-lower_orange = np.array([0, 185, 100])
-upper_orange = np.array([15, 255, 255])
 
 
 class VisionState(Enum):
@@ -50,7 +34,7 @@ class BallTrack(Node):
 
         #Parameter declaration. # noqa: E26
         self.declare_parameter('mode', 'open_cv')
-        self.declare_parameter('ball_type', 'green')
+        self.declare_parameter('ball_type', 'orange')
         self.declare_parameter(
             'image_topic',
             '/camera/image_raw',
