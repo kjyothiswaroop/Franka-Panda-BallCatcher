@@ -45,8 +45,11 @@ class image_processor():
         """Check frame for ball and publishes if present."""
         frame = self.capture_frame(color_img, depth_img)
         if frame is not None:
-            frame_HSV = self.convert_color(frame)
+            gauss = cv2.GaussianBlur(frame, (11, 11), 0)
+            frame_HSV = self.convert_color(gauss)
             frame_green, mask = self.threshold_ball(frame, frame_HSV, ball)
+            kernel = np.ones((3, 3), np.uint8)
+            mask = cv2.dilate(mask, kernel, iterations=2)
             (cx, cy, cz), cvt_image = self.find_ball(mask, frame_green, depth_img, intr)
             if len(cvt_image.shape) == 3:
                 image_processed = cvt_image
@@ -73,7 +76,7 @@ class image_processor():
             area = cv2.contourArea(cnt)
             if area < 20:
                 return np.array([-1, -1, -1]), empty_img
-            perimeter = cv2.arcLength(cnt, True)
+            # perimeter = cv2.arcLength(cnt, True)
 
             # if perimeter != 0:
             #     circularity = 4 * np.pi * (area / (perimeter * perimeter))
