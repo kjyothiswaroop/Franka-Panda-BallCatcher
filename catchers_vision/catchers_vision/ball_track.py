@@ -3,26 +3,16 @@ from cv_bridge import CvBridge
 
 from enum import auto, Enum
 
+from cv_bridge import CvBridge
 from geometry_msgs.msg import PointStamped, TransformStamped
-
-from message_filters import Subscriber, ApproximateTimeSynchronizer
-
-import numpy as np
-
-import pyrealsense2 as rs
-
 from rcl_interfaces.msg import ParameterDescriptor, ParameterType
 import rclpy
 from rclpy.node import Node
 from rclpy.qos import QoSProfile
-
-from sensor_msgs.msg import Image, CameraInfo
-
-from std_srvs.srv import Empty
-
+from sensor_msgs.msg import CameraInfo, Image
 from tf2_ros import TransformBroadcaster
 
-from . import stream
+from . import cv
 
 lower_tennis = np.array([15, 65, 50])
 upper_tennis = np.array([35, 255, 200])
@@ -46,73 +36,6 @@ class VisionState(Enum):
     HAAR = auto()
 
 
-def convert_color(frame):
-    """Convert color space from bgr to hsv."""
-    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-    return hsv
-
-
-def threshold_ball(image, frame, ball):
-    """Isolate ball."""
-    if ball == 'tennis':
-        mask = cv2.inRange(frame, lower_tennis, upper_tennis)
-    elif ball == 'green':
-        mask = cv2.inRange(frame, lower_green, upper_green)
-    elif ball == 'red':
-        mask = cv2.inRange(frame, lower_red, upper_red)
-    else:
-        mask = cv2.inRange(frame, lower_orange, upper_orange)
-
-    return cv2.bitwise_and(
-        image, image, mask=mask
-    ), mask
-
-
-def color_threshold(color_img, depth_img, intr, ball):
-    """Check frame for ball and publishes if present."""
-    # stream.set_scale()
-    # stream.align_self()
-    while True:
-        frame_HSV = convert_color(color_img)
-        frame_green, mask = threshold_ball(frame_HSV, ball)
-        (cx, cy, cz), pnt = find_ball(mask, depth_img, intr)
-        if cx != -1:
-            return np.array([cx, cy, cz]), mask
-        else:
-            return np.array([-1, -1, -1]), mask
-
-
-def find_ball(mask, depth_img, intr):
-    """Locate centroid of ball in 3d space."""
-    ret, thresh = cv2.threshold(mask, 127, 255, 0)
-    contours, hierarchy = cv2.findContours(thresh, 1, 2)
-    if len(contours) < 1:
-        return np.array([-1, -1, -1]), np.array([0, 0])
-    elif len(contours) >= 1:
-        cnt = max(contours, key=cv2.contourArea)
-        area = cv2.contourArea(cnt)
-        if area < 20:
-            return np.array([-1, -1, -1]), np.array([0, 0])
-        perimeter = cv2.arcLength(cnt, True)
-        if perimeter != 0:
-            circularity = 4 * np.pi * (area / (perimeter * perimeter))
-            if circularity < 0.6:
-                return (-1, -1, -1), np.array([0, 0])
-
-        M = cv2.moments(cnt)
-        if M['m00'] == 0:
-            return (-1, -1, -1), np.array([0, 0])
-        cx = int(M['m10']/M['m00'])
-        cy = int(M['m01']/M['m00'])
-        depth = depth_img[cy, cx] * 0.001
-        fx, fy, cx0, cy0 = intr
-        X = (cx - cx0) * depth / fx
-        Y = (cy - cy0) * depth / fy
-        Z = depth
-        point_3d = np.array([X, Y, Z])
-        return point_3d, np.array([cx, cy])
-
-
 class BallTrack(Node):
     """Publish pose of ball that node is attempting to track."""
 
@@ -125,6 +48,7 @@ class BallTrack(Node):
         self.get_logger().info('ball_track')
         qos_profile = QoSProfile(depth=10)
 
+        #Parameter declaration. # noqa: E26
         self.declare_parameter('mode', 'open_cv')
         self.declare_parameter('ball_type', 'green')
         self.declare_parameter(
@@ -132,7 +56,7 @@ class BallTrack(Node):
             '/camera/image_raw',
             ParameterDescriptor(type=ParameterType.PARAMETER_STRING)
         )
-
+        #Read param values. # noqa: E26
         self.mode = (
             self.get_parameter('mode').get_parameter_value().string_value
         )
@@ -140,73 +64,112 @@ class BallTrack(Node):
             self.get_parameter('ball_type').get_parameter_value().string_value
         )
         self.image_topic = self.get_parameter('image_topic').value
+        self.intrinsics = None
+        self.got_intrinsics = False
 
-        # INLINE CITATION ###
-        self.color_sub = Subscriber(self, Image, "/camera/color/image_raw")
-        self.depth_sub = Subscriber(self, Image, "/camera/aligned_depth_to_color/image_raw")
-        self.create_subscription(
+        self.color_img = Image()
+        self.depth_img = Image()
+        self.state = VisionState.OPENCV
+        self.bridge = CvBridge()
+        self.img_proc = cv.image_processor()
+        #Subscribers # noqa: E26
+        self.color_sub = self.create_subscription(
+            Image,
+            '/camera/camera/color/image_raw',
+            self.color_callback,
+            10
+        )
+
+        self.depth_sub = self.create_subscription(
+            Image,
+            '/camera/camera/aligned_depth_to_color/image_raw',
+            self.depth_callback,
+            10
+        )
+        self.caminfo_sub = self.create_subscription(
             CameraInfo,
-            "/camera/color/camera_info",
+            '/camera/camera/color/camera_info',
             self.camera_info_callback,
             10
         )
-        self.intrinsics = None
-        self.got_intrinsics = False
-        
-        self.ts = ApproximateTimeSynchronizer(
-            [self.color_sub, self.depth_sub],
-            queue_size=10,
-            slop=0.05  # 50 ms tolerance
-        )
-        self.ts.registerCallback(self.synced_callback)
 
+        #Publishers # noqa: E26
         self._ball = self.create_publisher(
             PointStamped, '/ball_pose', qos_profile
         )
-        self.image_pub = self.create_publisher(Image, self.image_topic + '_axes', 10)
+        self.image_pub = self.create_publisher(
+            Image,
+            self.image_topic + '_axes',
+            10
+        )
 
-        # self._track = self.create_service(Empty, '/track', self.track_callback)
-        self.state = VisionState.OPENCV
-        self.bridge = CvBridge()
+        #Timer callback # noqa: E26
+        self.timer = self.create_timer(0.1, self.timer_callback)
 
-    def synced_callback(self, color_msg, depth_msg):
+    def timer_callback(self):
         """Activates ball tracking."""
         if self.state == VisionState.OPENCV:
             if self.got_intrinsics:
-                color_img = self.bridge.imgmsg_to_cv2(color_msg, desired_encoding='bgr8')
-                depth_img = self.bridge.imgmsg_to_cv2(depth_msg, desired_encoding='passthrough')
-                location, mask = color_threshold(color_img, depth_img, self.intrinsics, self.ball)
-                mask_msg = self.bridge.cv2_to_imgmsg(mask, encoding="mono8")
-                self.image_pub.publish(mask_msg)
-                self.get_logger().info(f'ball detected at {location}')
-                pt = PointStamped()
-                pt.header.stamp = self.get_clock().now().to_msg()
-                pt.point.x = location[0]
-                pt.point.y = location[1]
-                pt.point.z = location[2]
-                self._ball.publish(pt)
-                transform = TransformStamped()
-                transform.header.stamp = self.get_clock().now().to_msg()
-                transform.header.frame_id = 'camera'
-                transform.child_frame_id = 'ball'
+                color_img = self.bridge.imgmsg_to_cv2(
+                    self.color_img,
+                    desired_encoding='bgr8'
+                )
 
-                transform.transform.translation.x = location[0]
-                transform.transform.translation.y = location[1]
-                transform.transform.translation.z = location[2]
-                transform.transform.rotation.w = 1.0
-                self.broadcaster.sendTransform(transform)
-            
+                depth_img = self.bridge.imgmsg_to_cv2(
+                    self.depth_img,
+                )
+
+                location, mask = self.img_proc.color_threshold(
+                    color_img,
+                    depth_img,
+                    self.intrinsics,
+                    self.ball
+                )
+
+                mask_msg = self.bridge.cv2_to_imgmsg(mask)
+                self.image_pub.publish(mask_msg)
+
+                if location[2] != -1.0:
+                    self.get_logger().info(f'ball detected at {location}')
+
+                    pt = PointStamped()
+                    pt.header.stamp = self.get_clock().now().to_msg()
+                    pt.point.x = location[0]
+                    pt.point.y = location[1]
+                    pt.point.z = location[2]
+                    self._ball.publish(pt)
+                    transform = TransformStamped()
+                    transform.header.stamp = self.get_clock().now().to_msg()
+                    transform.header.frame_id = 'camera_color_optical_frame'
+                    transform.child_frame_id = 'ball'
+
+                    transform.transform.translation.x = location[0]
+                    transform.transform.translation.y = location[1]
+                    transform.transform.translation.z = location[2]
+                    transform.transform.rotation.w = 1.0
+                    self.broadcaster.sendTransform(transform)
+
+                else:
+                    self.get_logger().info('Ball not detected!')
+
     def camera_info_callback(self, msg):
-        # K = [fx, 0, cx,
-        #      0, fy, cy,
-        #      0, 0, 1]
+        """Camera info callback."""
         fx = msg.k[0]
         fy = msg.k[4]
         cx = msg.k[2]
         cy = msg.k[5]
 
-        self.intrinsics = (fx, fy, cx, cy)
-        self.got_intrinsics = True
+        if not self.got_intrinsics:
+            self.intrinsics = (fx, fy, cx, cy)
+            self.got_intrinsics = True
+
+    def color_callback(self, msg):
+        """Color Image callback."""
+        self.color_img = msg
+
+    def depth_callback(self, msg):
+        """Depth Image callback."""
+        self.depth_img = msg
 
 
 def main(args=None):
