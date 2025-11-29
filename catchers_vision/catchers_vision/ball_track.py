@@ -114,26 +114,26 @@ class BallTrack(Node):
 
                 if location[2] != -1.0:
                     self.get_logger().info(f'ball detected at {location}')
-
-                    pt = PointStamped()
-                    pt.header.stamp = self.get_clock().now().to_msg()
-                    pt.point.x = location[0]
-                    pt.point.y = location[1]
-                    pt.point.z = location[2]
-                    self._ball.publish(pt)
                     transform = TransformStamped()
                     transform.header.stamp = self.get_clock().now().to_msg()
                     transform.header.frame_id = 'camera_color_optical_frame'
                     transform.child_frame_id = 'ball'
-
                     transform.transform.translation.x = location[0]
-                    transform.transform.translation.y = location[1]
-                    transform.transform.translation.z = location[2]
+                    transform.transform.translation.y = location[1] - 0.05
+                    transform.transform.translation.z = location[2] 
                     transform.transform.rotation.w = 1.0
                     self.broadcaster.sendTransform(transform)
-
                 else:
                     self.get_logger().info('Ball not detected!')
+
+
+                pt = PointStamped()
+                pt.header.stamp = self.get_clock().now().to_msg()
+                pt.point.x = location[0]
+                pt.point.y = location[1]
+                pt.point.z = location[2]
+                self._ball.publish(pt)
+
 
     def camera_info_callback(self, msg):
         """Camera info callback."""
