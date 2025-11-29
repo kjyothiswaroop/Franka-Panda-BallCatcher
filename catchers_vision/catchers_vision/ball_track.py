@@ -1,6 +1,3 @@
-import cv2
-from cv_bridge import CvBridge
-
 from enum import auto, Enum
 
 from cv_bridge import CvBridge
@@ -36,7 +33,7 @@ class BallTrack(Node):
 
         #Parameter declaration. # noqa: E26
         self.declare_parameter('mode', 'open_cv')
-        self.declare_parameter('ball_type', 'green')
+        self.declare_parameter('ball_type', 'orange')
         self.declare_parameter(
             'image_topic',
             '/camera/image_raw',
