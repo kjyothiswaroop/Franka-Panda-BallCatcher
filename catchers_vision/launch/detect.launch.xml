@@ -1,0 +1,17 @@
+<launch>
+    <arg name="demo" default="true"/>
+    <arg name="calibrate" default="false"/>
+
+    <include file="$(find-pkg-share robot_mover)/launch/pickplace.launch.xml">
+        <arg name="demo" value="$(var demo)"/>
+    </include>
+
+    <node pkg="catchers_vision" exec="aruco_detect" if="$(eval '\'$(var calibrate)\'==\'true\'')">
+        <param from="$(find-pkg-share catchers_vision)/config/aruco_params.yaml"/>
+    </node>
+
+    <include file="$(find-pkg-share catchers_vision)/launch/calibrate.launch.xml" if="$(eval '\'$(var calibrate)\'==\'true\'')"/>
+    <include file="$(find-pkg-share catchers_vision)/launch/publish.launch.xml" if="$(eval '\'$(var calibrate)\'==\'false\'')"/>
+
+    <node pkg="catchers_vision" exec="ball_track" if="$(eval '\'$(var calibrate)\'==\'false\'')"/>
+</launch>
