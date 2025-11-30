@@ -1,16 +1,18 @@
-import numpy as np
 import matplotlib.pyplot as plt
 import modern_robotics as mr
+import numpy as np
 import tf_transformations as tf
 
 
 def angle_between(a, b):
-    dot = np.clip(np.dot(a, b), -1.0, 1.0)  
+    dot = np.clip(np.dot(a, b), -1.0, 1.0)
     return np.arccos(dot)
 
+
 class RLSParabola:
+
     def __init__(self, x_bounds, y_bounds, z_bounds, lam=0.99):
-        self.theta_i = np.array([0,0,0,0,-4.9,0,0])    
+        self.theta_i = np.array([0, 0, 0, 0, -4.9, 0, 0])
         self.P_i = np.eye(7) * 1e6
         self.theta = self.theta_i.copy()
         self.P = self.P_i.copy()
@@ -36,30 +38,30 @@ class RLSParabola:
         self.theta = self.theta + K @ r
         self.P = (self.P - K @ H @ self.P) / self.lam
         return self.theta
-    
+
     def reset(self):
         self.theta = self.theta_i.copy()
         self.P = self.P_i.copy()
-    
+
     def pos_at(self, t):
         x = self.theta[0] * t + self.theta[1]
         y = self.theta[2] * t + self.theta[3]
         z = self.theta[4] * t**2 + self.theta[5] * t + self.theta[6]
         return np.stack((x, y, z), axis=-1)
-    
+
     def inside_box(self, pts, eps=1e-9):
-        x,y,z = pts[..., 0], pts[..., 1], pts[..., 2]
+        x, y, z = pts[..., 0], pts[..., 1], pts[..., 2]
         return ((self.bounds[0] - eps <= x) & (x <= self.bounds[1] + eps) &
                 (self.bounds[2] - eps <= y) & (y <= self.bounds[3] + eps) &
                 (self.bounds[4] - eps <= z) & (z <= self.bounds[5] + eps))
 
     def find_t_linear(self, val, a, b):
         if np.isclose(a, 0.0):
-            return np.full(val.shape,np.nan)
-        t = (val- b)/a
-        t = np.where(t < 0, np.nan,t)
-        return t 
-    
+            return np.full(val.shape, np.nan)
+        t = (val - b) / a
+        t = np.where(t < 0, np.nan, t)
+        return t
+
     def find_t_quad(self, val):
         a = self.theta[4]
         b = self.theta[5]
@@ -69,24 +71,28 @@ class RLSParabola:
                 return np.full(val.shape, np.nan)
             t = -c / b
         else:
-            t_1 = (-b + np.sqrt(b**2 - 4*a*c))/(2*a) 
+            t_1 = (-b + np.sqrt(b**2 - 4*a*c))/(2*a)
             t_2 = (-b - np.sqrt(b**2 - 4*a*c))/(2*a)
-            t = np.concatenate((t_1,t_2))
+            t = np.concatenate((t_1, t_2))
         t = np.where(t < 0, np.nan, t)
         return t
-    
+
     def calc_goal(self, eff_quat):
-        """returns pose and quat (np array) orientation of basket to catch ball,
-        eff_quat is the current orientation of the basket"""
-        eff_R = tf.quaternion_matrix(eff_quat)[:3,:3]
-        t_int_x = self.find_t_linear(self.bounds[:2],self.theta[0],self.theta[1])
-        t_int_y = self.find_t_linear(self.bounds[2:4],self.theta[2],self.theta[3])
+        """
+        Calc goal.
+
+        returns pose and quat (np array) orientation of basket to catch ball,
+        eff_quat is the current orientation of the basket
+        """
+        eff_R = tf.quaternion_matrix(eff_quat)[:3, :3]
+        t_int_x = self.find_t_linear(self.bounds[:2], self.theta[0], self.theta[1])
+        t_int_y = self.find_t_linear(self.bounds[2:4], self.theta[2], self.theta[3])
         t_int_z = self.find_t_quad(self.bounds[4:])
         t_cand = np.concatenate((t_int_x, t_int_y, t_int_z))
         t_cand = t_cand[np.isfinite(t_cand)]
         if t_cand.size == 0:
             return np.array([np.nan, np.nan, np.nan]), eff_quat
-        pts = self.pos_at(t_cand)            
+        pts = self.pos_at(t_cand)    
         mask_inside = self.inside_box(pts)   
         if not np.any(mask_inside):
             return np.array([np.nan, np.nan, np.nan]), eff_quat
