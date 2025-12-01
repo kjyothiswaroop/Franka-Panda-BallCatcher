@@ -8,6 +8,7 @@ from rclpy.node import Node
 from rclpy.qos import QoSProfile
 from sensor_msgs.msg import CameraInfo, Image
 from tf2_ros import TransformBroadcaster
+from ultralytics import YOLO
 
 from . import cv
 
@@ -33,13 +34,15 @@ class BallTrack(Node):
         qos_profile = QoSProfile(depth=10)
 
         #Parameter declaration. # noqa: E26
-        self.declare_parameter('mode', 'open_cv')
+        self.declare_parameter('mode', 'yolo')
         self.declare_parameter('ball_type', 'orange')
         self.declare_parameter(
             'image_topic',
             '/camera/image_raw',
             ParameterDescriptor(type=ParameterType.PARAMETER_STRING)
         )
+        self.declare_parameter('model', value='ball_detect.pt')
+
         #Read param values. # noqa: E26
         self.mode = (
             self.get_parameter('mode').get_parameter_value().string_value
@@ -47,13 +50,17 @@ class BallTrack(Node):
         self.ball = (
             self.get_parameter('ball_type').get_parameter_value().string_value
         )
+        self.model = YOLO(self.get_parameter('model').get_parameter_value().string_value)
         self.image_topic = self.get_parameter('image_topic').value
         self.intrinsics = None
         self.got_intrinsics = False
 
         self.color_img = Image()
         self.depth_img = Image()
-        self.state = VisionState.OPENCV
+        if self.mode == 'yolo':
+            self.state = VisionState.YOLO
+        else:
+            self.state = VisionState.OPENCV
         self.bridge = CvBridge()
         self.img_proc = cv.image_processor()
         #Subscribers # noqa: E26
@@ -113,29 +120,52 @@ class BallTrack(Node):
                 mask_msg = self.bridge.cv2_to_imgmsg(mask)
                 self.image_pub.publish(mask_msg)
 
-                if location[2] != -1.0:
-                    self.get_logger().info(f'ball detected at {location}')
-                else:
-                    self.get_logger().info('Ball not detected!')
+                self.broadcast_ball(location)     
+        elif self.state == VisionState.YOLO:
+            if self.got_intrinsics:
+                color_img = self.bridge.imgmsg_to_cv2(
+                    self.color_img,
+                    desired_encoding='bgr8'
+                )
 
+                depth_img = self.bridge.imgmsg_to_cv2(
+                    self.depth_img,
+                )
 
-                pt = PointStamped()
-                pt.header.stamp = self.get_clock().now().to_msg()
-                pt.point.x = location[0]
-                pt.point.y = location[1]
-                pt.point.z = location[2]
-                self._ball.publish(pt)
+                results = self.model(color_img)
+                class_names = self.model.names
+                # Get the result and draw it on an OpenCV image
+                frame = results[0].plot()
+                cx, cy = yolo_find_ball(results[0], class_names)
+                location = depth_extract(cx, cy, depth_img, self.intrinsics)                            
+                yolo_msg = self.bridge.cv2_to_imgmsg(frame, encoding='bgr8')
+                self.image_pub.publish(yolo_msg)
 
-                transform = TransformStamped()
-                transform.header.stamp = self.get_clock().now().to_msg()
-                transform.header.frame_id = 'camera_color_optical_frame'
-                transform.child_frame_id = 'ball'
-                transform.transform.translation.x = location[0]
-                transform.transform.translation.y = location[1] - 0.05
-                transform.transform.translation.z = location[2] 
-                transform.transform.rotation.w = 1.0
-                self.broadcaster.sendTransform(transform)
+                self.broadcast_ball(location)
 
+    def broadcast_ball(self, location):
+        """Broadcast ball tf to tf tree."""
+        if location[2] != -1.0:
+            self.get_logger().info(f'ball detected at {location}')
+        else:
+            self.get_logger().info('Ball not detected!')
+
+        pt = PointStamped()
+        pt.header.stamp = self.get_clock().now().to_msg()
+        pt.point.x = location[0]
+        pt.point.y = location[1]
+        pt.point.z = location[2]
+        self._ball.publish(pt)
+
+        transform = TransformStamped()
+        transform.header.stamp = self.get_clock().now().to_msg()
+        transform.header.frame_id = 'camera_color_optical_frame'
+        transform.child_frame_id = 'ball'
+        transform.transform.translation.x = location[0]
+        transform.transform.translation.y = location[1] - 0.05
+        transform.transform.translation.z = location[2]
+        transform.transform.rotation.w = 1.0
+        self.broadcaster.sendTransform(transform)
 
     def camera_info_callback(self, msg):
         """Camera info callback."""
@@ -155,6 +185,37 @@ class BallTrack(Node):
     def depth_callback(self, msg):
         """Depth Image callback."""
         self.depth_img = msg
+
+
+def yolo_find_ball(results, class_names):
+    """Utilize yolo to return location of moving ball if found."""
+    if results.boxes is not None:
+        for box in results.boxes:
+            cls_id = int(box.cls[0])
+            cls_name = class_names[cls_id]
+
+            if cls_name == 'Moving Ball':
+                xywh = box.xywh[0].cpu().numpy().astype(int)
+                cx, cy, w, h = xywh
+                conf = float(box.conf[0])
+                if conf > 0.70:
+                    return cx, cy
+        return None, None
+    else:
+        return None, None
+
+
+def depth_extract(cx, cy, depth_img, intr):
+    """Extract depth from points and depth img."""
+    if cx is not None:
+        depth = depth_img[cy, cx] * 0.001
+        fx, fy, cx0, cy0 = intr
+        X = (cx - cx0) * depth / fx
+        Y = (cy - cy0) * depth / fy
+        Z = depth
+        return [X, Y, Z]
+    else:
+        return [-1.0, -1.0, -1.0]
 
 
 def main(args=None):
