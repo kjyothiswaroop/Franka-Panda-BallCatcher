@@ -14,6 +14,7 @@ class RLSParabola:
     def __init__(self, x_bounds, y_bounds, z_bounds, lam=0.99):
         self.theta_i = np.array([0, 0, 0, 0, -4.9, 0, 0])
         self.P_i = np.eye(7) * 1e6
+        self.P_i[4,4] = 1e2
         self.theta = self.theta_i.copy()
         self.P = self.P_i.copy()
         self.lam = lam

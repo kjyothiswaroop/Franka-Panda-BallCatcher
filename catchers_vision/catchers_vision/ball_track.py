@@ -88,7 +88,7 @@ class BallTrack(Node):
         )
 
         #Timer callback # noqa: E26
-        self.timer = self.create_timer(0.1, self.timer_callback)
+        self.timer = self.create_timer(0.01, self.timer_callback)
 
     def timer_callback(self):
         """Activates ball tracking."""
