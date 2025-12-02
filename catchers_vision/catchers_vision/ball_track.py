@@ -51,8 +51,8 @@ class BallTrack(Node):
         self.intrinsics = None
         self.got_intrinsics = False
 
-        self.color_img = Image()
-        self.depth_img = Image()
+        self.color_img = None
+        self.depth_img = None
         self.state = VisionState.OPENCV
         self.bridge = CvBridge()
         self.img_proc = cv.image_processor()
@@ -94,6 +94,11 @@ class BallTrack(Node):
         """Activates ball tracking."""
         if self.state == VisionState.OPENCV:
             if self.got_intrinsics:
+
+                if self.color_img is None or self.depth_img is None:
+                    self.get_logger().warn("Waiting for images...")
+                    return
+                
                 color_img = self.bridge.imgmsg_to_cv2(
                     self.color_img,
                     desired_encoding='bgr8'
