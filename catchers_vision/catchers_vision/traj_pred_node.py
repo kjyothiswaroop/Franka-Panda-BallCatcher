@@ -29,18 +29,29 @@ class TrajPred(Node):
     def ball_track_callback(self,pt):
         t_msg = pt.header.stamp
         t = t_msg.sec + t_msg.nanosec * 1e-9
-        x = pt.point.x
-        y = pt.point.y
-        z = pt.point.z
-        self.theta = self.rls.update(x, y, z, t)
-        self.x_meas.append(x)
-        self.y_meas.append(y)
-        self.z_meas.append(z)
-        self.t.append(t - self.rls.t_i)
-        #self.get_logger().info("recieved meas")
-    
-    def plot_callback(self,request,response):
-        t = np.linspace(0,2)
+        z_cam_ball = pt.point.z
+
+        if z_cam_ball != -1:
+            trans = self.buffer.lookup_transform('base', 'ball', rclpy.time.Time())
+            self.get_logger().info(f'Transform is: {trans}')
+
+            if trans is None:
+                self.get_logger().warn('Transform base→camera not available')
+                return
+            else:
+                x = trans.transform.translation.x
+                y = trans.transform.translation.y
+                z = trans.transform.translation.z
+                self.get_logger().info(f'meas is: x:{x}, y:{y}, z:{z}')
+                self.theta = self.rls.update(x, y, z, t)
+                self.x_meas.append(x)
+                self.y_meas.append(y)
+                self.z_meas.append(z)
+                self.t.append(t - self.rls.t_i)
+
+    def plot_callback(self, request, response):
+        """Plot callback."""
+        t = np.linspace(0, self.t[-1])
         model = self.theta
         x_pred = model[0]*t + model[1]
         y_pred = model[2]*t + model[3]
@@ -49,8 +60,11 @@ class TrajPred(Node):
         ax = fig.add_subplot(111, projection='3d')
         ax.plot(x_pred, y_pred, z_pred, linewidth=2)
         ax.scatter(self.x_meas, self.y_meas, self.z_meas)
+        ax.set_xlabel('X')
+        ax.set_ylabel('Y')
+        ax.set_zlabel('Z')
         plt.axis('equal')
-        plt.legend(['true','pred'])
+        plt.legend(['pred', 'meas'])
         plt.show()
         return response
         
