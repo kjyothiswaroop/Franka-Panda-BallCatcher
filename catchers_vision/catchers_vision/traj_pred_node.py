@@ -18,10 +18,6 @@ class TrajPred(Node):
         """Initialize the ball tracking node."""
         super().__init__('traj_pred')
         self.get_logger().info('traj_pred')
-        #self.ball_pose_sub = self.create_subscription(PointStamped,
-                                                      #'ball_pose',
-                                                      #self.ball_track_callback,
-                                                      #10)
         self.rls = RLSParabola([-0.25, 0.25], [-0.25, 0.25], [0, 0.1],lam=0.99)
         self.plot = self.create_service(Empty, 'plot', self.plot_callback)
         self._tmr = self.create_timer(0.001, self.timer_callback)
@@ -32,7 +28,6 @@ class TrajPred(Node):
         self.t = []
         self.tf_buffer = Buffer()
         self.listener = TransformListener(self.tf_buffer, self)
-        self.ignore = True
         self.default_val = np.array([1.2242397229384518,
                                      -1.9332898148673308,
                                      1.5516697580441008])
@@ -60,34 +55,6 @@ class TrajPred(Node):
         self.t.append(t - self.rls.t_i)
         self.prev_loc = loc
         
-    def ball_track_callback(self, pt):
-        """Ball tracking subscriber."""
-        t_msg = pt.header.stamp
-        t = t_msg.sec + t_msg.nanosec * 1e-9
-        z_cam_ball = pt.point.z
-
-        if z_cam_ball != -1:
-            trans = self.buffer.lookup_transform('base', 'ball', rclpy.time.Time())
-            #self.get_logger().info(f'Transform is: {trans}')
-
-            if trans is None:
-                self.get_logger().warn('Transform base→camera not available')
-                return
-            else:
-                if self.ignore is False:
-                    x = trans.transform.translation.x
-                    y = trans.transform.translation.y
-                    z = trans.transform.translation.z
-                    self.get_logger().info(f'raw: x:{pt.point.x}, y:{pt.point.y}, z:{pt.point.z}')
-                    self.get_logger().info(f'meas is: x:{x}, y:{y}, z:{z}')
-                    self.theta = self.rls.update(x, y, z, t)
-                    self.x_meas.append(x)
-                    self.y_meas.append(y)
-                    self.z_meas.append(z)
-                    self.t.append(t - self.rls.t_i)
-                else:
-                    self.ignore = False
-
     def plot_callback(self, request, response):
         """Plot callback."""
         t = np.linspace(0, self.t[-1])
