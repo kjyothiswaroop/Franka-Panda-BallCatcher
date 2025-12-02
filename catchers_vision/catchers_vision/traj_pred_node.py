@@ -1,15 +1,17 @@
 from catchers_vision.trajectory_prediction import RLSParabola
-from geometry_msgs.msg import PointStamped
+from geometry_msgs.msg import Point, PointStamped
 import matplotlib.pyplot as plt
 import numpy as np
 import rclpy
 from rclpy.node import Node
 from std_srvs.srv import Empty
+from tf2_ros import TransformException
 from tf2_ros.buffer import Buffer
 from tf2_ros.transform_listener import TransformListener
-from tf2_ros import TransformException
+from visualization_msgs.msg import Marker
 
-#x:1.2242397229384518, y:-1.9332898148673308, z:1.5516697580441008
+#x:1.2242397229384518, y:-1.9332898148673308, z:1.5516697580441008 # noqa : E26
+
 
 class TrajPred(Node):
     """Inference trajectory of ball."""
@@ -18,7 +20,7 @@ class TrajPred(Node):
         """Initialize the ball tracking node."""
         super().__init__('traj_pred')
         self.get_logger().info('traj_pred')
-        self.rls = RLSParabola([-0.25, 0.25], [-0.25, 0.25], [0, 0.1],lam=0.99)
+        self.rls = RLSParabola([-0.25, 0.25], [-0.25, 0.25], [0, 0.1], lam=0.99)
         self.plot = self.create_service(Empty, 'plot', self.plot_callback)
         self._tmr = self.create_timer(0.001, self.timer_callback)
         self.theta = None
@@ -32,7 +34,34 @@ class TrajPred(Node):
                                      -1.9332898148673308,
                                      1.5516697580441008])
         self.prev_loc = self.default_val
-    
+
+        self.declare_parameter(
+            'actual_marker_topic',
+            '/ball_actual'
+        )
+        self.declare_parameter(
+            'pred_marker_topic',
+            '/ball_pred'
+        )
+
+        self.ball_actual_topic = self.get_parameter('actual_marker_topic').value
+        self.ball_pred_topic = self.get_parameter('pred_marker_topic').value
+
+        self.ball_actual_pub = self.create_publisher(
+            Marker,
+            self.ball_actual_topic,
+            10
+        )
+
+        self.ball_pred_pub = self.create_publisher(
+            Marker,
+            self.ball_pred_topic,
+            10
+        )
+
+        self.points = []
+        self.pred = []
+
     def timer_callback(self):
         trans = self.query_frame('base', 'ball')
         if trans is None:
@@ -48,6 +77,9 @@ class TrajPred(Node):
         or np.all(np.isclose(loc, self.prev_loc)):
             return
         self.get_logger().info(f'meas is: x:{x}, y:{y}, z:{z}')
+        self.add_point(x, y, z, 'actual')
+        self.publish_marker('actual')
+
         self.theta = self.rls.update(x, y, z, t)
         self.x_meas.append(x)
         self.y_meas.append(y)
@@ -62,6 +94,12 @@ class TrajPred(Node):
         x_pred = model[0]*t + model[1]
         y_pred = model[2]*t + model[3]
         z_pred = model[4]*(t**2) + model[5]*t + model[6]
+
+        for x,y,z in zip(x_pred, y_pred, z_pred):
+            self.add_point(x, y, z, 'pred')
+
+        self.publish_marker('pred')
+
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
         ax.plot(x_pred, y_pred, z_pred, linewidth=2)
@@ -98,7 +136,40 @@ class TrajPred(Node):
         except TransformException as ex:
             ex
             return None
+        
+    def add_point(self, x, y, z, type):
+        """Add points to array to publish Markers."""
+        p = Point()
+        p.x = x
+        p.y = y
+        p.z = z
+        if type == 'actual':
+            self.points.append(p)
+        else :
+            self.pred.append(p)
 
+    def publish_marker(self, type):
+        """Actual Marker publisher."""
+        m = Marker()
+        m.header.frame_id = 'base'
+        m.ns = type
+        m.id = 0
+        m.type = Marker.SPHERE_LIST
+
+        m.scale.x = 0.04
+        m.scale.y = 0.04
+        m.scale.z = 0.04
+        
+        m.color.a = 1.0
+        if type == 'actual':
+            m.color.g = 1.0
+            m.points = self.points
+            self.ball_actual_pub.publish(m)
+
+        else :
+            m.color.b = 1.0
+            m.points = self.pred
+            self.ball_pred_pub.publish(m)
 
 def main(args=None):
     """Entrypoint for pick_node."""
