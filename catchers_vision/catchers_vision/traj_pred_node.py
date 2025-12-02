@@ -38,7 +38,7 @@ class TrajPred(Node):
 
         if z_cam_ball != -1:
             trans = self.buffer.lookup_transform('base', 'ball', rclpy.time.Time())
-            self.get_logger().info(f'Transform is: {trans}')
+            #self.get_logger().info(f'Transform is: {trans}')
 
             if trans is None:
                 self.get_logger().warn('Transform base→camera not available')
