@@ -37,7 +37,7 @@ class TrajPred(Node):
         z_cam_ball = pt.point.z
 
         if z_cam_ball != -1:
-            trans = self.buffer.lookup_transform('ball', 'base', rclpy.time.Time())
+            trans = self.buffer.lookup_transform('base', 'ball', rclpy.time.Time())
             self.get_logger().info(f'Transform is: {trans}')
 
             if trans is None:
