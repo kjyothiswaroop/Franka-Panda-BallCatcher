@@ -15,6 +15,7 @@ find_package(geometry_msgs REQUIRED)
 # find_package(<dependency> REQUIRED)
 rosidl_generate_interfaces(${PROJECT_NAME}
         msg/ArucoMarkers.msg
+        srv/Speak.srv
         DEPENDENCIES std_msgs geometry_msgs ${SERVICE_MSGS_DEPS}
 )
 
