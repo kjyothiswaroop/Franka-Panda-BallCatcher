@@ -10,8 +10,9 @@ def angle_between(a, b):
 
 
 class LSMADParabola:
-
-    def __init__(self, x_bounds, y_bounds, z_bounds, N = 5, N_best = 3, v_gate = 10, window_size = 10):
+    def __init__(
+        self, x_bounds, y_bounds, z_bounds, N=5, N_best=3, v_gate=10, window_size=10
+    ):
         self.theta_i = np.array([0, 0, 0, 0, -4.9, 0, 0])
         self.theta = self.theta_i.copy()
         self.t_i = None
@@ -26,8 +27,8 @@ class LSMADParabola:
         self.meas_prev = None
         self.window_size = window_size
         self.v_gate = v_gate
-    
-    def LS_MAD(self, t, x, y, z, N_best = 3, k = 3):
+
+    def LS_MAD(self, t, x, y, z, N_best=3, k=3):
         x = np.array(x)
         y = np.array(y)
         z = np.array(z)
@@ -38,18 +39,20 @@ class LSMADParabola:
         t = t - self.t_i
         N = len(t)
         for ti in t:
-            H_i = np.array([
-                [ti, 1, 0,  0,   0,     0,     0],
-                [0,  0, ti, 1,   0,     0,     0],
-                [0,  0, 0,  0, ti**2,  ti,     1],
-            ])
+            H_i = np.array(
+                [
+                    [ti, 1, 0, 0, 0, 0, 0],
+                    [0, 0, ti, 1, 0, 0, 0],
+                    [0, 0, 0, 0, ti**2, ti, 1],
+                ]
+            )
             H_list.append(H_i)
         H = np.vstack(H_list)
         y_full = np.vstack([x, y, z]).T.reshape(-1)
         theta_ls = np.linalg.lstsq(H, y_full, rcond=None)[0]
         r_full = y_full - H @ theta_ls
-        r_xyz = r_full.reshape(-1, 3)           
-        residuals = np.linalg.norm(r_xyz, axis=1)  
+        r_xyz = r_full.reshape(-1, 3)
+        residuals = np.linalg.norm(r_xyz, axis=1)
         med = np.median(residuals)
         mad = np.median(np.abs(residuals - med))
         if mad == 0:
@@ -70,11 +73,13 @@ class LSMADParabola:
         z_best = z[best_idx]
         H_best = []
         for ti in t_best:
-            H_i = np.array([
-                [ti, 1, 0, 0, 0, 0, 0],
-                [0, 0, ti, 1, 0, 0, 0],
-                [0, 0, 0, 0, ti**2, ti, 1],
-            ])
+            H_i = np.array(
+                [
+                    [ti, 1, 0, 0, 0, 0, 0],
+                    [0, 0, ti, 1, 0, 0, 0],
+                    [0, 0, 0, 0, ti**2, ti, 1],
+                ]
+            )
             H_best.append(H_i)
 
         H_best = np.vstack(H_best)
@@ -85,7 +90,11 @@ class LSMADParabola:
 
     def update(self, x, y, z, t):
         pos = np.array([x, y, z])
-        if self.v_gate is not None and self.meas_prev is not None and self.t_i is not None:
+        if (
+            self.v_gate is not None
+            and self.meas_prev is not None
+            and self.t_i is not None
+        ):
             t_s = t - self.t_i
             dt = t_s - self.meas_prev[0]
             if dt <= 0:
@@ -104,20 +113,20 @@ class LSMADParabola:
             self.y_list = self.y_list[-W:]
             self.z_list = self.z_list[-W:]
             self.t_list = self.t_list[-W:]
-        if self.counter<self.N:
+        if self.counter < self.N:
             return np.full(self.theta.shape, np.nan)
         elif self.counter == self.N:
-            self.LS_MAD(self.t_list,
-                            self.x_list,
-                            self.y_list,
-                            self.z_list,
-                            N_best=self.N_best)
+            self.LS_MAD(
+                self.t_list, self.x_list, self.y_list, self.z_list, N_best=self.N_best
+            )
             return self.theta
-        self.LS_MAD(self.t_list,
-                            self.x_list,
-                            self.y_list,
-                            self.z_list,
-                            N_best=int(0.9*len(self.t_list)))
+        self.LS_MAD(
+            self.t_list,
+            self.x_list,
+            self.y_list,
+            self.z_list,
+            N_best=int(0.9 * len(self.t_list)),
+        )
         return self.theta
 
     def reset(self):
@@ -128,7 +137,7 @@ class LSMADParabola:
         self.x_list.clear()
         self.y_list.clear()
         self.z_list.clear()
-        self.t_list.clear()     
+        self.t_list.clear()
 
     def pos_at(self, t):
         x = self.theta[0] * t + self.theta[1]
@@ -138,9 +147,14 @@ class LSMADParabola:
 
     def inside_box(self, pts, eps=1e-9):
         x, y, z = pts[..., 0], pts[..., 1], pts[..., 2]
-        return ((self.bounds[0] - eps <= x) & (x <= self.bounds[1] + eps) &
-                (self.bounds[2] - eps <= y) & (y <= self.bounds[3] + eps) &
-                (self.bounds[4] - eps <= z) & (z <= self.bounds[5] + eps))
+        return (
+            (self.bounds[0] - eps <= x)
+            & (x <= self.bounds[1] + eps)
+            & (self.bounds[2] - eps <= y)
+            & (y <= self.bounds[3] + eps)
+            & (self.bounds[4] - eps <= z)
+            & (z <= self.bounds[5] + eps)
+        )
 
     def find_t_linear(self, val, a, b):
         if np.isclose(a, 0.0):
@@ -158,8 +172,8 @@ class LSMADParabola:
                 return np.full(val.shape, np.nan)
             t = -c / b
         else:
-            t_1 = (-b + np.sqrt(b**2 - 4*a*c))/(2*a)
-            t_2 = (-b - np.sqrt(b**2 - 4*a*c))/(2*a)
+            t_1 = (-b + np.sqrt(b**2 - 4 * a * c)) / (2 * a)
+            t_2 = (-b - np.sqrt(b**2 - 4 * a * c)) / (2 * a)
             t = np.concatenate((t_1, t_2))
         t = np.where(t < 0, np.nan, t)
         return t
@@ -179,30 +193,30 @@ class LSMADParabola:
         t_cand = t_cand[np.isfinite(t_cand)]
         if t_cand.size == 0:
             return np.array([np.nan, np.nan, np.nan]), eff_quat
-        pts = self.pos_at(t_cand)    
-        mask_inside = self.inside_box(pts)   
+        pts = self.pos_at(t_cand)
+        mask_inside = self.inside_box(pts)
         if not np.any(mask_inside):
             return np.array([np.nan, np.nan, np.nan]), eff_quat
         t_valid = t_cand[mask_inside]
         t_hit = np.min(t_valid)
         vx = self.theta[0]
         vy = self.theta[2]
-        vz = 2*self.theta[4]*t_hit + self.theta[5]
+        vz = 2 * self.theta[4] * t_hit + self.theta[5]
         vel_vec = np.array([vx, vy, vz])
         vel_mag = np.linalg.norm(vel_vec)
-        if (vel_mag < 1e-9):
-            return self.pos_at(t_hit),eff_quat
-        z_new = -vel_vec/vel_mag
-        z_cur = eff_R[:,2]
+        if vel_mag < 1e-9:
+            return self.pos_at(t_hit), eff_quat
+        z_new = -vel_vec / vel_mag
+        z_cur = eff_R[:, 2]
         w = np.cross(z_cur, z_new)
         w_norm = np.linalg.norm(w)
         R_rot = np.eye(3)
         if w_norm > 1e-9:
             th = angle_between(z_cur, z_new)
-            w_brac = mr.VecToso3(w/w_norm*th)
+            w_brac = mr.VecToso3(w / w_norm * th)
             R_rot = mr.MatrixExp3(w_brac)
         else:
-            if np.dot(z_cur,z_new) < 0:
+            if np.dot(z_cur, z_new) < 0:
                 tmp = np.array([1.0, 0.0, 0.0])
                 if abs(np.dot(tmp, z_cur)) > 0.9:
                     tmp = np.array([0.0, 1.0, 0.0])
@@ -213,47 +227,46 @@ class LSMADParabola:
         R_g = R_rot @ eff_R
         T_g = np.eye(4)
         T_g[:3, :3] = R_g
-        return self.pos_at(t_hit),tf.quaternion_from_matrix(T_g)
+        return self.pos_at(t_hit), tf.quaternion_from_matrix(T_g)
 
 
-    
 if __name__ == '__main__':
-    t = np.linspace(0,1,10)
+    t = np.linspace(0, 1, 10)
     vx = -2
     vy = 0
-    x_vals = vx*t + 0.4
-    y_vals = vy*t 
-    z_vals = 1 - 4.9*t**2
+    x_vals = vx * t + 0.4
+    y_vals = vy * t
+    z_vals = 1 - 4.9 * t**2
     noise_std = 0.01
 
     x_n = x_vals + np.random.randn(*x_vals.shape) * noise_std
     y_n = y_vals + np.random.randn(*y_vals.shape) * noise_std
     z_n = z_vals + np.random.randn(*z_vals.shape) * noise_std
-    
+
     x_n[0] += 2
     x_n[6] += 5
     x_n[9] -= 3
 
-    rls = LSMADParabola([-0.4,0.4],[-0.4,0.4],[-0.4,0.4])
+    rls = LSMADParabola([-0.4, 0.4], [-0.4, 0.4], [-0.4, 0.4])
 
     for i in range(7):
-        model = rls.update(x_n[i],y_n[i],z_n[i],t[i])
+        model = rls.update(x_n[i], y_n[i], z_n[i], t[i])
 
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
 
-    x_pred = model[0]*t + model[1]
-    y_pred = model[2]*t + model[3]
-    z_pred = model[4]*(t**2)+ model[5]*t + model[6]
+    x_pred = model[0] * t + model[1]
+    y_pred = model[2] * t + model[3]
+    z_pred = model[4] * (t**2) + model[5] * t + model[6]
 
-    goal,quat = rls.calc_goal([0.0, 0.0, 0.0, 1.0])
+    goal, quat = rls.calc_goal([0.0, 0.0, 0.0, 1.0])
     print(quat)
     print(goal)
 
     ax.plot(x_vals, y_vals, z_vals, linewidth=2)
     ax.plot(x_pred, y_pred, z_pred, linewidth=2)
-    ax.scatter(x_n,y_n,z_n)
-    ax.scatter(goal[0],goal[1],goal[2])
+    ax.scatter(x_n, y_n, z_n)
+    ax.scatter(goal[0], goal[1], goal[2])
     plt.axis('equal')
-    plt.legend(['true','pred'])
+    plt.legend(['true', 'pred'])
     plt.show()

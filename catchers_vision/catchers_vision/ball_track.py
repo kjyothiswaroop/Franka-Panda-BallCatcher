@@ -105,9 +105,9 @@ class BallTrack(Node):
             if self.got_intrinsics:
 
                 if self.color_img is None or self.depth_img is None:
-                    self.get_logger().warn("Waiting for images...")
+                    self.get_logger().warn('Waiting for images...')
                     return
-                
+
                 color_img = self.bridge.imgmsg_to_cv2(
                     self.color_img,
                     desired_encoding='bgr8'
@@ -132,7 +132,6 @@ class BallTrack(Node):
                 else:
                     self.get_logger().info('Ball not detected!')
 
-
                 pt = PointStamped()
                 pt.header.stamp = self.get_clock().now().to_msg()
                 pt.point.x = location[0]
@@ -146,10 +145,9 @@ class BallTrack(Node):
                 transform.child_frame_id = 'ball'
                 transform.transform.translation.x = location[0]
                 transform.transform.translation.y = location[1] - 0.05
-                transform.transform.translation.z = location[2] 
+                transform.transform.translation.z = location[2]
                 transform.transform.rotation.w = 1.0
                 self.broadcaster.sendTransform(transform)
-
 
     def camera_info_callback(self, msg):
         """Camera info callback."""

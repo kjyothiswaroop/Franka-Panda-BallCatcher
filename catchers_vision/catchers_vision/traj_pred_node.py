@@ -1,5 +1,5 @@
 from catchers_vision.trajectory_prediction import LSMADParabola
-from geometry_msgs.msg import Point, PointStamped
+from geometry_msgs.msg import Point
 import matplotlib.pyplot as plt
 import numpy as np
 import rclpy
@@ -20,8 +20,20 @@ class TrajPred(Node):
         """Initialize the ball tracking node."""
         super().__init__('traj_pred')
         self.get_logger().info('traj_pred')
-        self.rls = LSMADParabola([-1.0, 1.0], [-1.0, 1.0], [0, 0.1],N=7,N_best=4, v_gate=None)
-        self.plot = self.create_service(Empty, 'plot', self.plot_callback)
+        self.rls = LSMADParabola(
+            [-1.0, 1.0],
+            [-1.0, 1.0],
+            [0, 0.1],
+            N=7,
+            N_best=4,
+            v_gate=None
+        )
+
+        self.plot = self.create_service(
+            Empty,
+            'plot',
+            self.plot_callback
+        )
         self._tmr = self.create_timer(0.001, self.timer_callback)
         self.t_i = None
         self.theta = None
@@ -68,14 +80,16 @@ class TrajPred(Node):
         if trans is None:
             self.get_logger().warn('Transform base→camera not available')
             return
+
         x = trans.transform.translation.x
         y = trans.transform.translation.y
         z = trans.transform.translation.z
         t_msg = trans.header.stamp
         t = t_msg.sec + t_msg.nanosec * 1e-9
-        loc = np.array([x,y,z])
-        if np.all(np.isclose(loc, self.default_val)) \
-        or np.all(np.isclose(loc, self.prev_loc)):
+        loc = np.array([x, y, z])
+        if np.all(np.isclose(loc, self.default_val)) or np.all(
+            np.isclose(loc, self.prev_loc)
+        ):
             return
         self.get_logger().info(f'meas is: x:{x}, y:{y}, z:{z}')
         self.add_point(x, y, z, 'actual')
@@ -89,17 +103,17 @@ class TrajPred(Node):
         self.z_meas.append(z)
         self.t.append(t - self.t_i)
         self.prev_loc = loc
-        
+
     def plot_callback(self, request, response):
         """Plot callback."""
-        goal,quat = self.rls.calc_goal([0.0, 0.0, 0.0, 1.0])
+        goal, quat = self.rls.calc_goal([0.0, 0.0, 0.0, 1.0])
         t = np.linspace(0, self.t[-1])
         model = self.theta
         x_pred = model[0]*t + model[1]
         y_pred = model[2]*t + model[3]
         z_pred = model[4]*(t**2) + model[5]*t + model[6]
 
-        for x,y,z in zip(x_pred, y_pred, z_pred):
+        for x, y, z in zip(x_pred, y_pred, z_pred):
             self.add_point(x, y, z, 'pred')
 
         self.publish_marker('pred')
@@ -107,12 +121,12 @@ class TrajPred(Node):
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
         ax.plot(x_pred, y_pred, z_pred, linewidth=2)
-        ax.scatter(self.x_meas, self.y_meas, self.z_meas,alpha=0.5,color='red')
+        ax.scatter(self.x_meas, self.y_meas, self.z_meas, alpha=0.5, color='red')
         plt.axis('equal')
         plt.legend(['true', 'pred'])
         plt.show()
         return response
-    
+
     def query_frame(self, frame_id, child_id):
         """
         Query transform between two frames.
@@ -140,20 +154,20 @@ class TrajPred(Node):
         except TransformException as ex:
             ex
             return None
-        
-    def add_point(self, x, y, z, type):
+
+    def add_point(self, x, y, z, pub_type):
         """Add points to array to publish Markers."""
         p = Point()
         p.x = x
         p.y = y
         p.z = z
-        if type == 'actual':
+        if pub_type == 'actual':
             self.points.append(p)
-        else :
+        else:
             self.pred.append(p)
 
-    def publish_marker(self, type):
-        """Actual Marker publisher."""
+    def publish_marker(self, pub_type):
+        """Marker publisher."""
         m = Marker()
         m.header.frame_id = 'base'
         m.ns = type
@@ -163,17 +177,18 @@ class TrajPred(Node):
         m.scale.x = 0.04
         m.scale.y = 0.04
         m.scale.z = 0.04
-        
+
         m.color.a = 1.0
-        if type == 'actual':
+        if pub_type == 'actual':
             m.color.g = 1.0
             m.points = self.points
             self.ball_actual_pub.publish(m)
 
-        else :
+        else:
             m.color.b = 1.0
             m.points = self.pred
             self.ball_pred_pub.publish(m)
+
 
 def main(args=None):
     """Entrypoint for pick_node."""

@@ -1,7 +1,5 @@
-import numpy as np
-from stream import Stream 
-import pyrealsense2 as rs
 import cv2
+from stream import Stream
 
 max_value = 255
 max_value_H = 360//2
