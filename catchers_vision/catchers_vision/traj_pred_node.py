@@ -1,4 +1,4 @@
-from catchers_vision.trajectory_prediction import RLSParabola
+from catchers_vision.trajectory_prediction import LSMADParabola
 from geometry_msgs.msg import PointStamped
 import matplotlib.pyplot as plt
 import numpy as np
@@ -18,7 +18,7 @@ class TrajPred(Node):
         """Initialize the ball tracking node."""
         super().__init__('traj_pred')
         self.get_logger().info('traj_pred')
-        self.rls = RLSParabola([-0.25, 0.25], [-0.25, 0.25], [0, 0.1],lam=0.99,N=7,N_best=4)
+        self.rls = LSMADParabola([-0.25, 0.25], [-0.25, 0.25], [0, 0.1],lam=0.99,N=7,N_best=4)
         self.plot = self.create_service(Empty, 'plot', self.plot_callback)
         self._tmr = self.create_timer(0.001, self.timer_callback)
         self.t_i = None
