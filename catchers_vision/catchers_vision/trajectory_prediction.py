@@ -11,7 +11,7 @@ def angle_between(a, b):
 
 class RLSParabola:
 
-    def __init__(self, x_bounds, y_bounds, z_bounds, lam=0.99):
+    def __init__(self, x_bounds, y_bounds, z_bounds, warm_start=True, N = 5, N_best = 3, lam=0.99, v_gate = 10):
         self.theta_i = np.array([0, 0, 0, 0, -4.9, 0, 0])
         self.P_i = np.eye(7) * 1e6
         self.P_i[4,4] = 1e2
@@ -19,15 +19,98 @@ class RLSParabola:
         self.P = self.P_i.copy()
         self.lam = lam
         self.t_i = None
+        self.x_warm = np.zeros(N)
+        self.y_warm = np.zeros(N)
+        self.z_warm = np.zeros(N)
+        self.t_warm = np.zeros(N)
+        self.N = N
+        self.N_best = N_best
+        self.ws = warm_start
+        self.counter = 0
         self.bounds = np.array(x_bounds + y_bounds + z_bounds)
+        self.meas_prev = None
+        self.v_gate = v_gate
+    
+    def warm_start(self, t, x, y, z, N_best = 3, k = 3):
+        H_list = []
+        t_0 = t[0]
+        t = t - t_0
+        N = len(t)
+        for ti in t:
+            H_i = np.array([
+                [ti, 1, 0,  0,   0,     0,     0],
+                [0,  0, ti, 1,   0,     0,     0],
+                [0,  0, 0,  0, ti**2,  ti,     1],
+            ])
+            H_list.append(H_i)
+        H = np.vstack(H_list)
+        y_full = np.vstack([x, y, z]).T.reshape(-1)
+        theta_ls = np.linalg.lstsq(H, y_full, rcond=None)[0]
+        r_full = y_full - H @ theta_ls
+        r_xyz = r_full.reshape(-1, 3)           
+        residuals = np.linalg.norm(r_xyz, axis=1)  
+        med = np.median(residuals)
+        mad = np.median(np.abs(residuals - med))
+        if mad == 0:
+            mask = np.ones(N, dtype=bool)
+        else:
+            thresh = med + k * mad
+            mask = residuals <= thresh
+        inlier_idx = np.nonzero(mask)[0]
+        if len(inlier_idx) <= N_best:
+            best_idx = np.argsort(residuals)[:N_best]
+        else:
+            inlier_res = residuals[inlier_idx]
+            order = np.argsort(inlier_res)
+            best_idx = inlier_idx[order[:N_best]]
+        t_best = t[best_idx]
+        x_best = x[best_idx]
+        y_best = y[best_idx]
+        z_best = z[best_idx]
+        H_best = []
+        for ti in t_best:
+            H_i = np.array([
+                [ti, 1, 0, 0, 0, 0, 0],
+                [0, 0, ti, 1, 0, 0, 0],
+                [0, 0, 0, 0, ti**2, ti, 1],
+            ])
+            H_best.append(H_i)
+
+        H_best = np.vstack(H_best)
+        y_best_full = np.vstack([x_best, y_best, z_best]).T.reshape(-1)
+        theta_best = np.linalg.lstsq(H_best, y_best_full, rcond=None)[0]
+        self.theta = theta_best.copy()
+        self.P = np.eye(7) * 100.0
+        self.t_i = t_0
+        self.meas_prev = np.array([t_best[-1], x_best[-1], y_best[-1], z_best[-1]])
 
     def update(self, x, y, z, t):
+        if self.ws:
+            if self.counter<self.N:
+                self.x_warm[self.counter] = x
+                self.y_warm[self.counter] = y
+                self.z_warm[self.counter] = z
+                self.t_warm[self.counter] = t
+                self.counter += 1
+                return np.full(self.theta.shape, np.nan)
+            elif self.counter == self.N:
+                self.warm_start(self.t_warm,
+                                self.x_warm,
+                                self.y_warm,
+                                self.z_warm,
+                                N_best=self.N_best)
+                self.counter += 1
+                return self.theta
         t_s = 0
         if self.t_i is None:
             self.t_i = t
         else:
             t_s = t - self.t_i
         pos = np.array([x, y, z])
+        if self.v_gate is not None and self.meas_prev is not None:
+            v_mag = np.linalg.norm((pos-self.meas_prev[1:])/(t_s - self.meas_prev[0]))
+            if v_mag > self.v_gate:
+                return self.theta
         H = np.array([
             [t_s, 1.0, 0.0, 0.0, 0.0,      0.0,    0.0],
             [0.0, 0.0, t_s, 1.0, 0.0,      0.0,    0.0],
@@ -38,11 +121,15 @@ class RLSParabola:
         r = pos - H @ self.theta
         self.theta = self.theta + K @ r
         self.P = (self.P - K @ H @ self.P) / self.lam
+        self.meas_prev = np.array([t_s,x,y,z])
         return self.theta
 
     def reset(self):
         self.theta = self.theta_i.copy()
         self.P = self.P_i.copy()
+        self.counter = 0
+        self.t_i = None
+        self.meas_prev = None
 
     def pos_at(self, t):
         x = self.theta[0] * t + self.theta[1]
@@ -143,10 +230,14 @@ if __name__ == '__main__':
     x_n = x_vals + np.random.randn(*x_vals.shape) * noise_std
     y_n = y_vals + np.random.randn(*y_vals.shape) * noise_std
     z_n = z_vals + np.random.randn(*z_vals.shape) * noise_std
+    
+    x_n[0] += 2
+    x_n[6] += 5
+    x_n[9] -= 3
 
     rls = RLSParabola([-0.4,0.4],[-0.4,0.4],[-0.4,0.4])
 
-    for i in range(3):
+    for i in range(7):
         model = rls.update(x_n[i],y_n[i],z_n[i],t[i])
 
     fig = plt.figure()

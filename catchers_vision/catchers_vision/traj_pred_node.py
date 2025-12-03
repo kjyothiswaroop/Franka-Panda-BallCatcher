@@ -18,9 +18,10 @@ class TrajPred(Node):
         """Initialize the ball tracking node."""
         super().__init__('traj_pred')
         self.get_logger().info('traj_pred')
-        self.rls = RLSParabola([-0.25, 0.25], [-0.25, 0.25], [0, 0.1],lam=0.99)
+        self.rls = RLSParabola([-0.25, 0.25], [-0.25, 0.25], [0, 0.1],lam=0.99,N=7,N_best=4)
         self.plot = self.create_service(Empty, 'plot', self.plot_callback)
         self._tmr = self.create_timer(0.001, self.timer_callback)
+        self.t_i = None
         self.theta = None
         self.x_meas = []
         self.y_meas = []
@@ -49,10 +50,12 @@ class TrajPred(Node):
             return
         self.get_logger().info(f'meas is: x:{x}, y:{y}, z:{z}')
         self.theta = self.rls.update(x, y, z, t)
+        if self.t_i is None:
+            self.t_i = t
         self.x_meas.append(x)
         self.y_meas.append(y)
         self.z_meas.append(z)
-        self.t.append(t - self.rls.t_i)
+        self.t.append(t - self.t_i)
         self.prev_loc = loc
         
     def plot_callback(self, request, response):
@@ -65,7 +68,7 @@ class TrajPred(Node):
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
         ax.plot(x_pred, y_pred, z_pred, linewidth=2)
-        ax.scatter(self.x_meas, self.y_meas, self.z_meas)
+        ax.scatter(self.x_meas, self.y_meas, self.z_meas,alpha=0.5,color='red')
         plt.axis('equal')
         plt.legend(['true', 'pred'])
         plt.show()
