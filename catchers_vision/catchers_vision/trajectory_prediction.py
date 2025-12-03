@@ -11,7 +11,7 @@ def angle_between(a, b):
 
 class LSMADParabola:
 
-    def __init__(self, x_bounds, y_bounds, z_bounds, N = 5, N_best = 3, v_gate = 10):
+    def __init__(self, x_bounds, y_bounds, z_bounds, N = 5, N_best = 3, v_gate = 10, window_size = 10):
         self.theta_i = np.array([0, 0, 0, 0, -4.9, 0, 0])
         self.theta = self.theta_i.copy()
         self.t_i = None
@@ -24,6 +24,7 @@ class LSMADParabola:
         self.counter = 0
         self.bounds = np.array(x_bounds + y_bounds + z_bounds)
         self.meas_prev = None
+        self.window_size = window_size
         self.v_gate = v_gate
     
     def LS_MAD(self, t, x, y, z, N_best = 3, k = 3):
@@ -97,6 +98,12 @@ class LSMADParabola:
         self.z_list.append(z)
         self.t_list.append(t)
         self.counter += 1
+        W = self.window_size
+        if len(self.t_list) > W:
+            self.x_list = self.x_list[-W:]
+            self.y_list = self.y_list[-W:]
+            self.z_list = self.z_list[-W:]
+            self.t_list = self.t_list[-W:]
         if self.counter<self.N:
             return np.full(self.theta.shape, np.nan)
         elif self.counter == self.N:
@@ -110,7 +117,7 @@ class LSMADParabola:
                             self.x_list,
                             self.y_list,
                             self.z_list,
-                            N_best=int(0.75*len(self.t_list)))
+                            N_best=int(0.9*len(self.t_list)))
         return self.theta
 
     def reset(self):
