@@ -2,6 +2,7 @@ from enum import auto, Enum
 
 from cv_bridge import CvBridge
 from geometry_msgs.msg import PointStamped, TransformStamped
+from message_filters import ApproximateTimeSynchronizer, Subscriber
 from rcl_interfaces.msg import ParameterDescriptor, ParameterType
 import rclpy
 from rclpy.node import Node
@@ -56,18 +57,15 @@ class BallTrack(Node):
         self.image_topic = self.get_parameter('image_topic').value
 
         #Subscribers # noqa: E26
-        self.color_sub = self.create_subscription(
+        self.color_sub = Subscriber(
+            self,
             Image,
-            '/camera/camera/color/image_raw',
-            self.color_callback,
-            10
+            '/camera/camera/color/image_raw'
         )
-
-        self.depth_sub = self.create_subscription(
+        self.depth_sub = Subscriber(
+            self,
             Image,
-            '/camera/camera/aligned_depth_to_color/image_raw',
-            self.depth_callback,
-            10
+            '/camera/camera/aligned_depth_to_color/image_raw'
         )
         self.caminfo_sub = self.create_subscription(
             CameraInfo,
@@ -75,6 +73,13 @@ class BallTrack(Node):
             self.camera_info_callback,
             10
         )
+
+        self.ts = ApproximateTimeSynchronizer(
+            [self.color_sub, self.depth_sub],
+            queue_size=10,
+            slop=0.05  # 50 ms tolerance
+        )
+        self.ts.registerCallback(self.synced_callback)
 
         #Publishers # noqa: E26
         self._ball = self.create_publisher(
@@ -160,13 +165,10 @@ class BallTrack(Node):
             self.intrinsics = (fx, fy, cx, cy)
             self.got_intrinsics = True
 
-    def color_callback(self, msg):
-        """Color Image callback."""
-        self.color_img = msg
-
-    def depth_callback(self, msg):
-        """Depth Image callback."""
-        self.depth_img = msg
+    def synced_callback(self, color_msg, depth_msg):
+        """Sync callback for color and depth."""
+        self.color_img = color_msg
+        self.depth_img = depth_msg
 
 
 def main(args=None):

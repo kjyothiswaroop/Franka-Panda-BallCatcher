@@ -2,11 +2,13 @@
     <arg name="demo" default="true"/>
     <arg name="calibrate" default="false"/>
 
-    <include file="$(find-pkg-share realsense2_camera)/launch/rs_launch.py">
+    <include file="$(find-pkg-share realsense2_camera)/launch/rs_launch.py" if="$(eval '\'$(var calibrate)\'==\'false\'')">
         <arg name="align_depth.enable" value="true"/>
         <arg name="depth_module.depth_profile" value="424x240x60"/>
         <arg name="rgb_camera.color_profile" value="424x240x60"/>
     </include>
+
+    <include file="$(find-pkg-share realsense2_camera)/launch/rs_launch.py" if="$(eval '\'$(var calibrate)\'==\'true\'')"/>
 
     <include file="$(find-pkg-share robot_mover)/launch/pickplace.launch.xml">
         <arg name="demo" value="$(var demo)"/>
@@ -16,7 +18,7 @@
         <param from="$(find-pkg-share catchers_vision)/config/aruco_params.yaml"/>
     </node>
 
-    <include file="$(find-pkg-share catchers_vision)/launch/calibrate.launch.xml" if="$(eval '\'$(var calibrate)\'==\'true\'')"/>
+    <include file="$(find-pkg-share catchers_vision)/launch/calib.launch.xml" if="$(eval '\'$(var calibrate)\'==\'true\'')"/>
     <include file="$(find-pkg-share catchers_vision)/launch/publish.launch.xml" if="$(eval '\'$(var calibrate)\'==\'false\'')"/>
 
     <node pkg="catchers_vision" exec="ball_track" if="$(eval '\'$(var calibrate)\'==\'false\'')"/>
