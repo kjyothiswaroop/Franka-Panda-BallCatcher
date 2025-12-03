@@ -33,8 +33,14 @@ class BallTrack(Node):
         qos_profile = QoSProfile(depth=10)
 
         #Parameter declaration. # noqa: E26
-        self.declare_parameter('mode', 'open_cv')
-        self.declare_parameter('ball_type', 'orange')
+        self.declare_parameter(
+            'mode',
+            'open_cv'
+        )
+        self.declare_parameter(
+            'ball_type',
+            'orange'
+        )
         self.declare_parameter(
             'image_topic',
             '/camera/image_raw',
@@ -48,14 +54,7 @@ class BallTrack(Node):
             self.get_parameter('ball_type').get_parameter_value().string_value
         )
         self.image_topic = self.get_parameter('image_topic').value
-        self.intrinsics = None
-        self.got_intrinsics = False
 
-        self.color_img = Image()
-        self.depth_img = Image()
-        self.state = VisionState.OPENCV
-        self.bridge = CvBridge()
-        self.img_proc = cv.image_processor()
         #Subscribers # noqa: E26
         self.color_sub = self.create_subscription(
             Image,
@@ -90,10 +89,25 @@ class BallTrack(Node):
         #Timer callback # noqa: E26
         self.timer = self.create_timer(0.01, self.timer_callback)
 
+        #Attributes # noqa: E26
+        self.intrinsics = None
+        self.got_intrinsics = False
+        self.color_img = None
+        self.depth_img = None
+        self.state = VisionState.OPENCV
+        self.bridge = CvBridge()
+        self.img_proc = cv.image_processor()
+        self.points = []
+
     def timer_callback(self):
         """Activates ball tracking."""
         if self.state == VisionState.OPENCV:
             if self.got_intrinsics:
+
+                if self.color_img is None or self.depth_img is None:
+                    self.get_logger().warn("Waiting for images...")
+                    return
+                
                 color_img = self.bridge.imgmsg_to_cv2(
                     self.color_img,
                     desired_encoding='bgr8'

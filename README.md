@@ -46,6 +46,9 @@ The `catchers_vision` package has one important launch file `detect.launch.xml.`
 
 - ### What `detect.launch.xml` does
 
+    - Starts the `rs_launch.py` from the `realsense2_camera` package.
+        - Camera is launched at 60fps at a lower resolution and depth alignment.
+
     - Starts the `pickplacelaunch.xml` from `robot_mover` package.
 
         - If `demo` is `true` then the franka launches in Rviz along with Moveit.
@@ -86,14 +89,7 @@ The `catchers_vision` package has one important launch file `detect.launch.xml.`
 
 1. Plug in the RealSense camera into your machine.
 
-2. In a terminal, start the RealSense camera driver so camera topics are available:
-
-    ```bash
-    ros2 launch realsense2_camera rs_launch.py align_depth.enable:=true depth_module.depth_profile:=424x240x60 rgb_camera.color_profile:=424x240x60
-    ```
-
-
-3. In another terminal (with the catchers_ws sourced), launch the `detect.launch.xml`:
+2. In another terminal (with the catchers_ws sourced), launch the `detect.launch.xml`:
 
 - If camera calibration is required(usually when camera is moved), attach the ArUco marker of ID `25` from the family
   `DICT_6X6_1000` at the end effector of the franka robot arm and run the command below and follow the calibration procedure as described in [Camera_Calibration](https://github.com/kjyothiswaroop/easy_handeye2/blob/master/README.md)

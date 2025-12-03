@@ -2,6 +2,12 @@
     <arg name="demo" default="true"/>
     <arg name="calibrate" default="false"/>
 
+    <include file="$(find-pkg-share realsense2_camera)/launch/rs_launch.py">
+        <arg name="align_depth.enable" value="true"/>
+        <arg name="depth_module.depth_profile" value="424x240x60"/>
+        <arg name="rgb_camera.color_profile" value="424x240x60"/>
+    </include>
+
     <include file="$(find-pkg-share robot_mover)/launch/pickplace.launch.xml">
         <arg name="demo" value="$(var demo)"/>
     </include>
