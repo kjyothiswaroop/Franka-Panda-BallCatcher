@@ -140,9 +140,14 @@ class BallTrack(Node):
                 self.image_pub.publish(mask_msg)
 
                 self.broadcast_ball(location)
+
         elif self.state == VisionState.YOLO:
             # self.get_logger().info('YOLO Model Mode')
             if self.got_intrinsics:
+                if self.color_img is None or self.depth_img is None:
+                    self.get_logger().warn('Waiting for images...')
+                    return
+
                 color_img = self.bridge.imgmsg_to_cv2(
                     self.color_img,
                     desired_encoding='bgr8'
