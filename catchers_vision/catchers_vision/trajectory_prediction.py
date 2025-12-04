@@ -13,7 +13,7 @@ class LSMADParabola:
     def __init__(
         self, x_bounds, y_bounds, z_bounds, N=5, N_best=3, v_gate=10, window_size=10
     ):
-        self.theta_i = np.array([0, 0, 0, 0, -4.9, 0, 0])
+        self.theta_i = np.array([np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan])
         self.theta = self.theta_i.copy()
         self.t_i = None
         self.x_list = []
@@ -22,7 +22,6 @@ class LSMADParabola:
         self.t_list = []
         self.N = N
         self.N_best = N_best
-        self.counter = 0
         self.bounds = np.array(x_bounds + y_bounds + z_bounds)
         self.meas_prev = None
         self.window_size = window_size
@@ -37,7 +36,7 @@ class LSMADParabola:
         if self.t_i is None:
             self.t_i = t[0]
         t = t - self.t_i
-        N = len(t)
+        n_pts = len(t)
         for ti in t:
             H_i = np.array(
                 [
@@ -56,7 +55,7 @@ class LSMADParabola:
         med = np.median(residuals)
         mad = np.median(np.abs(residuals - med))
         if mad == 0:
-            mask = np.ones(N, dtype=bool)
+            mask = np.ones(n_pts, dtype=bool)
         else:
             thresh = med + k * mad
             mask = residuals <= thresh
@@ -106,16 +105,15 @@ class LSMADParabola:
         self.y_list.append(y)
         self.z_list.append(z)
         self.t_list.append(t)
-        self.counter += 1
         W = self.window_size
         if len(self.t_list) > W:
             self.x_list = self.x_list[-W:]
             self.y_list = self.y_list[-W:]
             self.z_list = self.z_list[-W:]
             self.t_list = self.t_list[-W:]
-        if self.counter < self.N:
+        if len(self.t_list) < self.N:
             return np.full(self.theta.shape, np.nan)
-        elif self.counter == self.N:
+        elif len(self.t_list) == self.N:
             self.LS_MAD(
                 self.t_list, self.x_list, self.y_list, self.z_list, N_best=self.N_best
             )
@@ -130,7 +128,6 @@ class LSMADParabola:
         return self.theta
 
     def reset(self):
-        self.counter = 0
         self.t_i = None
         self.meas_prev = None
         self.theta = self.theta_i.copy()
@@ -185,6 +182,8 @@ class LSMADParabola:
         returns pose and quat (np array) orientation of basket to catch ball,
         eff_quat is the current orientation of the basket
         """
+        if np.any(np.isnan(self.theta)):
+            return np.array([np.nan, np.nan, np.nan]), eff_quat
         eff_R = tf.quaternion_matrix(eff_quat)[:3, :3]
         t_int_x = self.find_t_linear(self.bounds[:2], self.theta[0], self.theta[1])
         t_int_y = self.find_t_linear(self.bounds[2:4], self.theta[2], self.theta[3])

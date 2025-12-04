@@ -1,5 +1,5 @@
 from catchers_vision.trajectory_prediction import LSMADParabola
-from geometry_msgs.msg import Point
+from geometry_msgs.msg import Point, PoseStamped
 import matplotlib.pyplot as plt
 import numpy as np
 import rclpy
@@ -36,7 +36,7 @@ class TrajPred(Node):
         )
         self._tmr = self.create_timer(0.001, self.timer_callback)
         self.t_i = None
-        self.theta = None
+        self.theta = np.array([np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan])
         self.x_meas = []
         self.y_meas = []
         self.z_meas = []
@@ -71,14 +71,26 @@ class TrajPred(Node):
             self.ball_pred_topic,
             10
         )
+        
+        self.reset_srv = self.create_service(
+            Empty,
+            'reset_throw',
+            self.reset_callback
+        )
 
+        self.goal_pose_pub = self.create_publisher(
+            PoseStamped,
+            'goal_pose',
+            10
+        )
+        
         self.points = []
         self.pred = []
 
     def timer_callback(self):
         trans = self.query_frame('base', 'ball')
         if trans is None:
-            self.get_logger().warn('Transform base→camera not available')
+            self.get_logger().warn('Transform base→ball not available')
             return
 
         x = trans.transform.translation.x
@@ -96,6 +108,21 @@ class TrajPred(Node):
         self.publish_marker('actual')
 
         self.theta = self.rls.update(x, y, z, t)
+        goal, quat = self.rls.calc_goal([0.0, 0.0, 0.0, 1.0])
+        
+        if not np.any(np.isnan(goal)):
+            goal_pose = PoseStamped()
+            goal_pose.header.frame_id = 'base'
+            goal_pose.header.stamp = t_msg
+            goal_pose.pose.position.x = goal[0]
+            goal_pose.pose.position.y = goal[1]
+            goal_pose.pose.position.z = goal[2]
+            goal_pose.pose.orientation.x = quat[0]
+            goal_pose.pose.orientation.y = quat[1]
+            goal_pose.pose.orientation.z = quat[2]
+            goal_pose.pose.orientation.w = quat[3]
+            self.goal_pose_pub.publish(goal_pose)  
+        
         if self.t_i is None:
             self.t_i = t
         self.x_meas.append(x)
@@ -103,6 +130,21 @@ class TrajPred(Node):
         self.z_meas.append(z)
         self.t.append(t - self.t_i)
         self.prev_loc = loc
+        
+        if not np.any(np.isnan(self.theta)):
+            self.pred.clear()
+            t = np.linspace(0, self.t[-1])
+            model = self.theta
+            x_pred = model[0]*t + model[1]
+            y_pred = model[2]*t + model[3]
+            z_pred = model[4]*(t**2) + model[5]*t + model[6]
+
+            for x, y, z in zip(x_pred, y_pred, z_pred):
+                self.add_point(x, y, z, 'pred')
+
+            self.publish_marker('pred')
+            
+        
 
     def plot_callback(self, request, response):
         """Plot callback."""
@@ -112,12 +154,6 @@ class TrajPred(Node):
         x_pred = model[0]*t + model[1]
         y_pred = model[2]*t + model[3]
         z_pred = model[4]*(t**2) + model[5]*t + model[6]
-
-        for x, y, z in zip(x_pred, y_pred, z_pred):
-            self.add_point(x, y, z, 'pred')
-
-        self.publish_marker('pred')
-
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
         ax.plot(x_pred, y_pred, z_pred, linewidth=2)
@@ -170,7 +206,7 @@ class TrajPred(Node):
         """Marker publisher."""
         m = Marker()
         m.header.frame_id = 'base'
-        m.ns = type
+        m.ns = pub_type
         m.id = 0
         m.type = Marker.SPHERE_LIST
 
@@ -188,6 +224,30 @@ class TrajPred(Node):
             m.color.b = 1.0
             m.points = self.pred
             self.ball_pred_pub.publish(m)
+    
+    def reset_callback(self, request, response):
+        self.get_logger().info('Resetting trajectory predictor for new throw')
+
+        self.rls.reset()
+
+        self.t_i = None
+        self.theta = np.array([np.nan, np.nan, np.nan,
+                            np.nan, np.nan, np.nan, np.nan])
+
+        self.x_meas.clear()
+        self.y_meas.clear()
+        self.z_meas.clear()
+        self.t.clear()
+
+        self.points.clear()
+        self.pred.clear()
+
+        self.prev_loc = self.default_val
+
+        self.publish_marker('actual')
+        self.publish_marker('pred')
+
+        return response
 
 
 def main(args=None):
