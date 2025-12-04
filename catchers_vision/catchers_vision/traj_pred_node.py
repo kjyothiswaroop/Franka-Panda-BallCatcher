@@ -1,11 +1,11 @@
 from catchers_vision.trajectory_prediction import LSMADParabola
-from geometry_msgs.msg import Point, PoseStamped
+from geometry_msgs.msg import Point, PoseStamped, TransformStamped
 import matplotlib.pyplot as plt
 import numpy as np
 import rclpy
 from rclpy.node import Node
 from std_srvs.srv import Empty
-from tf2_ros import TransformException
+from tf2_ros import TransformBroadcaster, TransformException
 from tf2_ros.buffer import Buffer
 from tf2_ros.transform_listener import TransformListener
 from visualization_msgs.msg import Marker
@@ -43,9 +43,9 @@ class TrajPred(Node):
         self.t = []
         self.tf_buffer = Buffer()
         self.listener = TransformListener(self.tf_buffer, self)
-        self.default_val = np.array([1.2242397229384518,
-                                     -1.9332898148673308,
-                                     1.5516697580441008])
+        self.default_val = np.array([-1.6859101588182408,
+                                     -1.0609070448747981,
+                                     1.4410477769492847])
         self.prev_loc = self.default_val
 
         self.declare_parameter(
@@ -83,6 +83,8 @@ class TrajPred(Node):
             'goal_pose',
             10
         )
+
+        self.broadcaster = TransformBroadcaster(self)
         
         self.points = []
         self.pred = []
@@ -122,6 +124,19 @@ class TrajPred(Node):
             goal_pose.pose.orientation.z = quat[2]
             goal_pose.pose.orientation.w = quat[3]
             self.goal_pose_pub.publish(goal_pose)  
+
+            transform = TransformStamped()
+            transform.header.stamp = self.get_clock().now().to_msg()
+            transform.header.frame_id = 'base'
+            transform.child_frame_id = 'goal_pose'
+            transform.transform.translation.x = goal[0]
+            transform.transform.translation.y = goal[1]
+            transform.transform.translation.z = goal[2]
+            transform.transform.rotation.x = quat[0] 
+            transform.transform.rotation.y = quat[1]
+            transform.transform.rotation.z = quat[2]
+            transform.transform.rotation.w = quat[3]
+            self.broadcaster.sendTransform(transform)
         
         if self.t_i is None:
             self.t_i = t
