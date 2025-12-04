@@ -41,7 +41,7 @@ class BallTrack(Node):
             '/camera/image_raw',
             ParameterDescriptor(type=ParameterType.PARAMETER_STRING)
         )
-        self.declare_parameter('model', value='ball_detect.pt')
+        self.declare_parameter('model', value='ball-detect-2.pt')
 
         #Read param values. # noqa: E26
         self.mode = (
