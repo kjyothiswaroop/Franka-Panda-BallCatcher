@@ -1,0 +1,9 @@
+/ball_track:
+  ros__parameters:
+    mode: yolo
+    ball_type: orange
+    image_topic: /camera/image_raw
+    color_image_topic: /camera/camera/color/image_raw
+    depth_image_topic: /camera/camera/aligned_depth_to_color/image_raw
+    camera_info: /camera/camera/color/camera_info
+    model: ball-detect-3.pt

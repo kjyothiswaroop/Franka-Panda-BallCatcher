@@ -42,6 +42,21 @@ class BallTrack(Node):
             '/camera/image_raw',
             ParameterDescriptor(type=ParameterType.PARAMETER_STRING)
         )
+        self.declare_parameter(
+            'color_image_topic',
+            '/camera/camera/color/image_raw',
+            ParameterDescriptor(type=ParameterType.PARAMETER_STRING)
+        )
+        self.declare_parameter(
+            'depth_image_topic',
+            '/camera/camera/aligned_depth_to_color/image_raw',
+            ParameterDescriptor(type=ParameterType.PARAMETER_STRING)
+        )
+        self.declare_parameter(
+            'camera_info',
+            '/camera/camera/color/camera_info',
+            ParameterDescriptor(type=ParameterType.PARAMETER_STRING)
+        )
         self.declare_parameter('model', value='ball-detect-3.pt')
 
         #Read param values. # noqa: E26
@@ -53,29 +68,24 @@ class BallTrack(Node):
         )
         self.model = YOLO(self.get_parameter('model').get_parameter_value().string_value)
         self.image_topic = self.get_parameter('image_topic').value
+        self.color_image_topic = self.get_parameter('color_image_topic').value
+        self.depth_image_topic = self.get_parameter('depth_image_topic').value
+        self.camera_info_topic = self.get_parameter('camera_info_topic').value
 
-        self.color_img = Image()
-        self.depth_img = Image()
-        if self.mode == 'yolo':
-            self.state = VisionState.YOLO
-        else:
-            self.state = VisionState.OPENCV
-        self.bridge = CvBridge()
-        self.img_proc = cv.image_processor()
         #Subscribers # noqa: E26
         self.color_sub = Subscriber(
             self,
             Image,
-            '/camera/camera/color/image_raw'
+            self.color_image_topic
         )
         self.depth_sub = Subscriber(
             self,
             Image,
-            '/camera/camera/aligned_depth_to_color/image_raw'
+            self.depth_image_topic
         )
         self.caminfo_sub = self.create_subscription(
             CameraInfo,
-            '/camera/camera/color/camera_info',
+            self.camera_info_topic,
             self.camera_info_callback,
             10
         )
@@ -105,10 +115,14 @@ class BallTrack(Node):
         self.got_intrinsics = False
         self.color_img = None
         self.depth_img = None
-        # self.state = VisionState.OPENCV
         self.bridge = CvBridge()
         self.img_proc = cv.image_processor()
         self.points = []
+
+        if self.mode == 'yolo':
+            self.state = VisionState.YOLO
+        else:
+            self.state = VisionState.OPENCV
 
     def timer_callback(self):
         """Activates ball tracking."""
@@ -142,7 +156,7 @@ class BallTrack(Node):
                 self.broadcast_ball(location)
 
         elif self.state == VisionState.YOLO:
-            # self.get_logger().info('YOLO Model Mode')
+
             if self.got_intrinsics:
                 if self.color_img is None or self.depth_img is None:
                     self.get_logger().warn('Waiting for images...')
@@ -159,7 +173,6 @@ class BallTrack(Node):
 
                 results = self.model(color_img)
                 class_names = self.model.names
-                # Get the result and draw it on an OpenCV image
                 frame = results[0].plot()
                 cx, cy = self.img_proc.yolo_find_ball(results[0], class_names)
                 location = self.img_proc.depth_extract(cx, cy, depth_img, self.intrinsics)

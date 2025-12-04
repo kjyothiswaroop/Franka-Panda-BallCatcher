@@ -21,5 +21,7 @@
     <include file="$(find-pkg-share catchers_vision)/launch/calib.launch.xml" if="$(eval '\'$(var calibrate)\'==\'true\'')"/>
     <include file="$(find-pkg-share catchers_vision)/launch/publish.launch.xml" if="$(eval '\'$(var calibrate)\'==\'false\'')"/>
 
-    <node pkg="catchers_vision" exec="ball_track" if="$(eval '\'$(var calibrate)\'==\'false\'')"/>
+    <node pkg="catchers_vision" exec="ball_track" if="$(eval '\'$(var calibrate)\'==\'false\'')">
+        <param from="$(find-pkg-share catchers_vision)/config/ball_track.yaml"/>
+    </node>
 </launch>

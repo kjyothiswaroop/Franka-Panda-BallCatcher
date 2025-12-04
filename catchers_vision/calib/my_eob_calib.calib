@@ -1,0 +1,20 @@
+parameters:
+  name: my_eob_calib
+  calibration_type: eye_on_base
+  robot_base_frame: base
+  robot_effector_frame: fer_hand_tcp
+  tracking_base_frame: camera_link
+  tracking_marker_frame: aruco_marker_25
+  freehand_robot_movement: true
+  move_group_namespace: /
+  move_group: manipulator
+transform:
+  translation:
+    x: -0.216253341722495
+    y: -0.9458254229713862
+    z: 0.5151003930139129
+  rotation:
+    x: -0.008469976368267762
+    y: -0.02397129067304027
+    z: 0.4165348472447397
+    w: 0.9087641926014642
