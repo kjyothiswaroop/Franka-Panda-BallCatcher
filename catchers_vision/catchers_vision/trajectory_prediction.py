@@ -11,7 +11,7 @@ def angle_between(a, b):
 
 class LSMADParabola:
     def __init__(
-        self, x_bounds, y_bounds, z_bounds, N=5, N_best=3, v_gate=10, window_size=10
+        self, x_bounds, y_bounds, z_bounds, N=5, N_best=3, v_gate=10, window_size=15
     ):
         self.theta_i = np.array([np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan])
         self.theta = self.theta_i.copy()
@@ -123,7 +123,7 @@ class LSMADParabola:
             self.x_list,
             self.y_list,
             self.z_list,
-            N_best=int(0.5 * W),
+            N_best=5,
         )
         return self.theta
 
