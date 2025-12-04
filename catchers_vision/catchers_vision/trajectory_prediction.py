@@ -123,7 +123,7 @@ class LSMADParabola:
             self.x_list,
             self.y_list,
             self.z_list,
-            N_best=int(0.9 * len(self.t_list)),
+            N_best=int(0.5 * W),
         )
         return self.theta
 

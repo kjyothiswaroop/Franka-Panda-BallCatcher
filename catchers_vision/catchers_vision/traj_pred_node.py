@@ -43,9 +43,9 @@ class TrajPred(Node):
         self.t = []
         self.tf_buffer = Buffer()
         self.listener = TransformListener(self.tf_buffer, self)
-        self.default_val = np.array([-1.6859101588182408,
-                                     -1.0609070448747981,
-                                     1.4410477769492847])
+        self.default_val = np.array([1.231411411847474,
+                                     -1.9377062772120284,
+                                     1.5023842480911258])
         self.prev_loc = self.default_val
 
         self.declare_parameter(
