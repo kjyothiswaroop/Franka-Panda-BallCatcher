@@ -26,7 +26,7 @@ class TrajPred(Node):
             [0, 0.1],
             N=7,
             N_best=4,
-            v_gate=None
+            v_gate=10
         )
 
         self.plot = self.create_service(
@@ -43,10 +43,8 @@ class TrajPred(Node):
         self.t = []
         self.tf_buffer = Buffer()
         self.listener = TransformListener(self.tf_buffer, self)
-        self.default_val = np.array([-1.6859101588182408,
-                                     -1.0609070448747981,
-                                     1.4410477769492847])
-        self.prev_loc = self.default_val
+        self.default_val = None
+        self.prev_loc = None
 
         self.declare_parameter(
             'actual_marker_topic',
@@ -90,6 +88,16 @@ class TrajPred(Node):
         self.pred = []
 
     def timer_callback(self):
+        if self.default_val is None:
+            init_frame = self.query_frame('base', 'ball')
+            if init_frame is not None:
+                self.get_logger().info('default value initialized.')
+                x = init_frame.transform.translation.x
+                y = init_frame.transform.translation.y
+                z = init_frame.transform.translation.z
+                self.default_val = np.array([x,y,z])
+                self.prev_loc = self.default_val.copy()
+            return
         trans = self.query_frame('base', 'ball')
         if trans is None:
             self.get_logger().warn('Transform base→ball not available')
