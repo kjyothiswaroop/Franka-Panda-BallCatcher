@@ -26,7 +26,7 @@ class TrajPred(Node):
             [0, 0.1],
             N=7,
             N_best=4,
-            v_gate=None
+            v_gate=10
         )
 
         self.plot = self.create_service(

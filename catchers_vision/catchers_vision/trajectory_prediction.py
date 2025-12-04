@@ -11,7 +11,8 @@ def angle_between(a, b):
 
 class LSMADParabola:
     def __init__(
-        self, x_bounds, y_bounds, z_bounds, N=5, N_best=3, v_gate=10, window_size=15
+        self, x_bounds, y_bounds, z_bounds, N=5, N_best=3, v_gate=10, window_size=15, gate_residual_thresh=0.2,
+        min_inliers_for_gate=5
     ):
         self.theta_i = np.array([np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan])
         self.theta = self.theta_i.copy()
@@ -26,6 +27,9 @@ class LSMADParabola:
         self.meas_prev = None
         self.window_size = window_size
         self.v_gate = v_gate
+        self.v_gate_active = False
+        self.gate_residual_thresh = gate_residual_thresh
+        self.min_inliers_for_gate = min_inliers_for_gate
 
     def LS_MAD(self, t, x, y, z, N_best=3, k=3):
         x = np.array(x)
@@ -86,11 +90,20 @@ class LSMADParabola:
         theta_best = np.linalg.lstsq(H_best, y_best_full, rcond=None)[0]
         self.theta = theta_best.copy()
         self.meas_prev = np.array([t_best[-1], x_best[-1], y_best[-1], z_best[-1]])
+        
+        inlier_res = residuals[best_idx]
+        rms_inlier = np.sqrt(np.mean(inlier_res**2))
+
+        if (len(best_idx) >= self.min_inliers_for_gate and
+                rms_inlier < self.gate_residual_thresh and
+                not np.isnan(self.theta).any()):
+            self.v_gate_active = True
 
     def update(self, x, y, z, t):
         pos = np.array([x, y, z])
         if (
             self.v_gate is not None
+            and self.v_gate_active
             and self.meas_prev is not None
             and self.t_i is not None
         ):
@@ -135,6 +148,7 @@ class LSMADParabola:
         self.y_list.clear()
         self.z_list.clear()
         self.t_list.clear()
+        self.v_gate_active = False
 
     def pos_at(self, t):
         x = self.theta[0] * t + self.theta[1]
