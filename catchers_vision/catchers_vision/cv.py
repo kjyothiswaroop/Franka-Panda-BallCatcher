@@ -76,12 +76,6 @@ class image_processor():
             area = cv2.contourArea(cnt)
             if area < 15:
                 return np.array([-1, -1, -1]), empty_img
-            # perimeter = cv2.arcLength(cnt, True)
-
-            # if perimeter != 0:
-            #     circularity = 4 * np.pi * (area / (perimeter * perimeter))
-            #     if circularity < 0.6:
-            #         return (-1, -1, -1), empty_img
 
             M = cv2.moments(cnt)
             if M['m00'] == 0:
@@ -89,18 +83,14 @@ class image_processor():
 
             cx = int(M['m10']/M['m00'])
             cy = int(M['m01']/M['m00'])
-
-            depth = depth_img[cy, cx] * 0.001
-            fx, fy, cx0, cy0 = intr
-            X = (cx - cx0) * depth / fx
-            Y = (cy - cy0) * depth / fy
-            Z = depth
-            point_3d = np.array([X, Y, Z])
+            
+            point_3d = self.depth_extract(cx, cy, depth_img, intr)
+            
             cv2.drawContours(cvt_image, [cnt], -1, (0, 255, 0), 2)
             cv2.circle(cvt_image, (cx, cy), 5, (0, 0, 255), -1)
             cv2.putText(
                 cvt_image,
-                f'({round(X, 3)},{round(Y, 3)},{round(Z, 3)})',
+                f'({round(point_3d[0], 3)},{round(point_3d[1], 3)},{round(point_3d[2], 3)})',
                 (cx + 10, cy - 10),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.5,
@@ -126,3 +116,32 @@ class image_processor():
         )
 
         return bg_removed
+
+    def yolo_find_ball(self, results, class_names):
+        """Utilize yolo to return location of moving ball if found."""
+        if results.boxes is not None:
+            for box in results.boxes:
+                cls_id = int(box.cls[0])
+                cls_name = class_names[cls_id]
+
+                if cls_name == 'Moving Ball':
+                    xywh = box.xywh[0].cpu().numpy().astype(int)
+                    cx, cy, w, h = xywh
+                    conf = float(box.conf[0])
+                    if conf > 0.70:
+                        return cx, cy
+            return None, None
+        else:
+            return None, None
+
+    def depth_extract(self, cx, cy, depth_img, intr):
+        """Extract depth from points and depth img."""
+        if cx is not None:
+            depth = depth_img[cy, cx] * 0.001
+            fx, fy, cx0, cy0 = intr
+            X = (cx - cx0) * depth / fx
+            Y = (cy - cy0) * depth / fy
+            Z = depth
+            return np.array([X, Y, Z])
+        else:
+            return [-1.0, -1.0, -1.0]

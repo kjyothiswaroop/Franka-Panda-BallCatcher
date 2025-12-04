@@ -42,7 +42,7 @@ class BallTrack(Node):
             '/camera/image_raw',
             ParameterDescriptor(type=ParameterType.PARAMETER_STRING)
         )
-        self.declare_parameter('model', value='ball-detect-2.pt')
+        self.declare_parameter('model', value='ball-detect-3.pt')
 
         #Read param values. # noqa: E26
         self.mode = (
@@ -105,7 +105,7 @@ class BallTrack(Node):
         self.got_intrinsics = False
         self.color_img = None
         self.depth_img = None
-        self.state = VisionState.OPENCV
+        # self.state = VisionState.OPENCV
         self.bridge = CvBridge()
         self.img_proc = cv.image_processor()
         self.points = []
@@ -113,6 +113,7 @@ class BallTrack(Node):
     def timer_callback(self):
         """Activates ball tracking."""
         if self.state == VisionState.OPENCV:
+            # self.get_logger().info('OpenCV mode')
             if self.got_intrinsics:
 
                 if self.color_img is None or self.depth_img is None:
@@ -138,8 +139,9 @@ class BallTrack(Node):
                 mask_msg = self.bridge.cv2_to_imgmsg(mask)
                 self.image_pub.publish(mask_msg)
 
-                self.broadcast_ball(location)     
+                self.broadcast_ball(location)
         elif self.state == VisionState.YOLO:
+            # self.get_logger().info('YOLO Model Mode')
             if self.got_intrinsics:
                 color_img = self.bridge.imgmsg_to_cv2(
                     self.color_img,
@@ -154,8 +156,8 @@ class BallTrack(Node):
                 class_names = self.model.names
                 # Get the result and draw it on an OpenCV image
                 frame = results[0].plot()
-                cx, cy = yolo_find_ball(results[0], class_names)
-                location = depth_extract(cx, cy, depth_img, self.intrinsics)                            
+                cx, cy = self.img_proc.yolo_find_ball(results[0], class_names)
+                location = self.img_proc.depth_extract(cx, cy, depth_img, self.intrinsics)
                 yolo_msg = self.bridge.cv2_to_imgmsg(frame, encoding='bgr8')
                 self.image_pub.publish(yolo_msg)
 
@@ -200,37 +202,6 @@ class BallTrack(Node):
         """Sync callback for color and depth."""
         self.color_img = color_msg
         self.depth_img = depth_msg
-
-
-def yolo_find_ball(results, class_names):
-    """Utilize yolo to return location of moving ball if found."""
-    if results.boxes is not None:
-        for box in results.boxes:
-            cls_id = int(box.cls[0])
-            cls_name = class_names[cls_id]
-
-            if cls_name == 'Moving Ball':
-                xywh = box.xywh[0].cpu().numpy().astype(int)
-                cx, cy, w, h = xywh
-                conf = float(box.conf[0])
-                if conf > 0.70:
-                    return cx, cy
-        return None, None
-    else:
-        return None, None
-
-
-def depth_extract(cx, cy, depth_img, intr):
-    """Extract depth from points and depth img."""
-    if cx is not None:
-        depth = depth_img[cy, cx] * 0.001
-        fx, fy, cx0, cy0 = intr
-        X = (cx - cx0) * depth / fx
-        Y = (cy - cy0) * depth / fy
-        Z = depth
-        return [X, Y, Z]
-    else:
-        return [-1.0, -1.0, -1.0]
 
 
 def main(args=None):
