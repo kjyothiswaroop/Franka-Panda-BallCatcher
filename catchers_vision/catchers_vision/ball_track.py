@@ -2,6 +2,7 @@ from enum import auto, Enum
 
 from cv_bridge import CvBridge
 from geometry_msgs.msg import PointStamped, TransformStamped
+from message_filters import ApproximateTimeSynchronizer, Subscriber
 from rcl_interfaces.msg import ParameterDescriptor, ParameterType
 import rclpy
 from rclpy.node import Node
@@ -52,8 +53,6 @@ class BallTrack(Node):
         )
         self.model = YOLO(self.get_parameter('model').get_parameter_value().string_value)
         self.image_topic = self.get_parameter('image_topic').value
-        self.intrinsics = None
-        self.got_intrinsics = False
 
         self.color_img = Image()
         self.depth_img = Image()
@@ -64,18 +63,15 @@ class BallTrack(Node):
         self.bridge = CvBridge()
         self.img_proc = cv.image_processor()
         #Subscribers # noqa: E26
-        self.color_sub = self.create_subscription(
+        self.color_sub = Subscriber(
+            self,
             Image,
-            '/camera/camera/color/image_raw',
-            self.color_callback,
-            10
+            '/camera/camera/color/image_raw'
         )
-
-        self.depth_sub = self.create_subscription(
+        self.depth_sub = Subscriber(
+            self,
             Image,
-            '/camera/camera/aligned_depth_to_color/image_raw',
-            self.depth_callback,
-            10
+            '/camera/camera/aligned_depth_to_color/image_raw'
         )
         self.caminfo_sub = self.create_subscription(
             CameraInfo,
@@ -83,6 +79,13 @@ class BallTrack(Node):
             self.camera_info_callback,
             10
         )
+
+        self.ts = ApproximateTimeSynchronizer(
+            [self.color_sub, self.depth_sub],
+            queue_size=10,
+            slop=0.05  # 50 ms tolerance
+        )
+        self.ts.registerCallback(self.synced_callback)
 
         #Publishers # noqa: E26
         self._ball = self.create_publisher(
@@ -95,12 +98,27 @@ class BallTrack(Node):
         )
 
         #Timer callback # noqa: E26
-        self.timer = self.create_timer(0.1, self.timer_callback)
+        self.timer = self.create_timer(0.01, self.timer_callback)
+
+        #Attributes # noqa: E26
+        self.intrinsics = None
+        self.got_intrinsics = False
+        self.color_img = None
+        self.depth_img = None
+        self.state = VisionState.OPENCV
+        self.bridge = CvBridge()
+        self.img_proc = cv.image_processor()
+        self.points = []
 
     def timer_callback(self):
         """Activates ball tracking."""
         if self.state == VisionState.OPENCV:
             if self.got_intrinsics:
+
+                if self.color_img is None or self.depth_img is None:
+                    self.get_logger().warn('Waiting for images...')
+                    return
+
                 color_img = self.bridge.imgmsg_to_cv2(
                     self.color_img,
                     desired_encoding='bgr8'
@@ -178,13 +196,10 @@ class BallTrack(Node):
             self.intrinsics = (fx, fy, cx, cy)
             self.got_intrinsics = True
 
-    def color_callback(self, msg):
-        """Color Image callback."""
-        self.color_img = msg
-
-    def depth_callback(self, msg):
-        """Depth Image callback."""
-        self.depth_img = msg
+    def synced_callback(self, color_msg, depth_msg):
+        """Sync callback for color and depth."""
+        self.color_img = color_msg
+        self.depth_img = depth_msg
 
 
 def yolo_find_ball(results, class_names):
