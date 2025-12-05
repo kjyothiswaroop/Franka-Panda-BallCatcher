@@ -53,7 +53,7 @@ class BallTrack(Node):
             ParameterDescriptor(type=ParameterType.PARAMETER_STRING)
         )
         self.declare_parameter(
-            'camera_info',
+            'camera_info_topic',
             '/camera/camera/color/camera_info',
             ParameterDescriptor(type=ParameterType.PARAMETER_STRING)
         )

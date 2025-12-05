@@ -21,7 +21,7 @@ class TrajPred(Node):
         self.rls = LSMADParabola(
             [-1.0, 1.0],
             [-1.0, 1.0],
-            [0, 0.1],
+            [0, 0.2],
             N=7,
             N_best=4,
             v_gate=10
