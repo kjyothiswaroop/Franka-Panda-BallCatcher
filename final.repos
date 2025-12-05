@@ -7,3 +7,7 @@ repositories:
     type: git
     url: git@github.com:ME495-EmbeddedSystems/final-project-catchers.git
     version: main
+  homework-3-part-2-actual-catchers:
+    type: git
+    url: git@github.com:ME495-EmbeddedSystems/homework-3-part-2-actual-catchers.git
+    version: main

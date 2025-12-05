@@ -3,37 +3,15 @@
 This repository holds the package for the ME-450 final project of Team Catchers.
 
 ## Prerequisites
-- The `realsense2_camera` driver installed (from Intel RealSense ROS2 package) if using a RealSense camera.
+- The `realsense2_camera` driver installed (from Intel RealSense ROS2 package).
 - A RealSense camera physically connected to the machine and accessible by the driver.
-- Clone and build the `robot_mover` package:
-    ```bash
-    mkdir -p mover_ws/src
-    cd mover_ws/src
-    git clone git@github.com:ME495-EmbeddedSystems/homework-3-part-2-actual-catchers.git
-    cd ../
-    colcon build
-    ```
-- Clone and build the `easy_handeye2` package :
-    ```bash
-    mkdir -p handeye_ws/src
-    cd handeye_ws/src
-    git clone git@github.com:kjyothiswaroop/easy_handeye2.git
-    cd ../
-    colcon build
-    ```
-- Environment setup:
-   Add the lines below to your ~/.bashrc and replace `<location_of_mover_ws>` and `<location_of_handeye_ws>` with the correct locations on your computer.
-   ```bash
-   source ~/<location_of_mover_ws>/mover_ws/install/setup.bash
-   source ~/<location_of_handeye_ws>/handeye_ws/install/setup.bash
-   ```
-
-- Clone and build the `catchers_vision` and `catchers_vision_interfaces` packages:
+- Clone and build the packages:
   ```bash
-  mkdir -p catchers_ws/src
-  cd catchers_ws/src
+  mkdir -p ws/src
+  cd ws/src
   git clone git@github.com:ME495-EmbeddedSystems/final-project-catchers.git
   cd ../
+  vcs import src < src/final-project-catchers/final.repos
   colcon build
   source install/setup.bash
   ```
@@ -108,23 +86,26 @@ The `catchers_vision` package has one important launch file `detect.launch.xml.`
 
 ```bash
 final-project-catchers
-│
 ├── catchers_vision
+│   ├── calib
+│   │   └── my_eob_calib.calib
 │   ├── catchers_vision
 │   │   ├── aruco.py
 │   │   ├── ball_track.py
 │   │   ├── cv.py
-│   │   ├── __init__.py
 │   │   ├── stream.py
-│   │   ├── test_stream.py
+│   │   ├── stream_tester.py
 │   │   ├── trajectory_prediction.py
 │   │   └── traj_pred_node.py
 │   ├── config
-│   │   └── aruco_params.yaml
+│   │   ├── aruco_params.yaml
+│   │   └── ball_track.yaml
 │   ├── launch
 │   │   ├── calib.launch.xml
 │   │   ├── detect.launch.xml
 │   │   └── publish.launch.xml
+│   ├── model
+│   │   └── ball-detect-3.pt
 │   ├── package.xml
 │   ├── resource
 │   │   └── catchers_vision
