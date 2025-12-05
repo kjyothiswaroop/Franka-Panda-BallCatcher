@@ -83,9 +83,9 @@ class image_processor():
 
             cx = int(M['m10']/M['m00'])
             cy = int(M['m01']/M['m00'])
-            
+
             point_3d = self.depth_extract(cx, cy, depth_img, intr)
-            
+
             cv2.drawContours(cvt_image, [cnt], -1, (0, 255, 0), 2)
             cv2.circle(cvt_image, (cx, cy), 5, (0, 0, 255), -1)
             cv2.putText(

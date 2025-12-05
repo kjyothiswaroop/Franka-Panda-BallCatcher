@@ -10,8 +10,6 @@ from tf2_ros.buffer import Buffer
 from tf2_ros.transform_listener import TransformListener
 from visualization_msgs.msg import Marker
 
-#x:1.2242397229384518, y:-1.9332898148673308, z:1.5516697580441008 # noqa : E26
-
 
 class TrajPred(Node):
     """Inference trajectory of ball."""
@@ -69,7 +67,7 @@ class TrajPred(Node):
             self.ball_pred_topic,
             10
         )
-        
+
         self.reset_srv = self.create_service(
             Empty,
             'reset_throw',
@@ -83,7 +81,7 @@ class TrajPred(Node):
         )
 
         self.broadcaster = TransformBroadcaster(self)
-        
+
         self.points = []
         self.pred = []
 
@@ -95,7 +93,7 @@ class TrajPred(Node):
                 x = init_frame.transform.translation.x
                 y = init_frame.transform.translation.y
                 z = init_frame.transform.translation.z
-                self.default_val = np.array([x,y,z])
+                self.default_val = np.array([x, y, z])
                 self.prev_loc = self.default_val.copy()
             return
         trans = self.query_frame('base', 'ball')
@@ -119,7 +117,7 @@ class TrajPred(Node):
 
         self.theta = self.rls.update(x, y, z, t)
         goal, quat = self.rls.calc_goal([0.0, 0.0, 0.0, 1.0])
-        
+
         if not np.any(np.isnan(goal)):
             goal_pose = PoseStamped()
             goal_pose.header.frame_id = 'base'
@@ -131,7 +129,7 @@ class TrajPred(Node):
             goal_pose.pose.orientation.y = quat[1]
             goal_pose.pose.orientation.z = quat[2]
             goal_pose.pose.orientation.w = quat[3]
-            self.goal_pose_pub.publish(goal_pose)  
+            self.goal_pose_pub.publish(goal_pose)
 
             transform = TransformStamped()
             transform.header.stamp = self.get_clock().now().to_msg()
@@ -140,12 +138,12 @@ class TrajPred(Node):
             transform.transform.translation.x = goal[0]
             transform.transform.translation.y = goal[1]
             transform.transform.translation.z = goal[2]
-            transform.transform.rotation.x = quat[0] 
+            transform.transform.rotation.x = quat[0]
             transform.transform.rotation.y = quat[1]
             transform.transform.rotation.z = quat[2]
             transform.transform.rotation.w = quat[3]
             self.broadcaster.sendTransform(transform)
-        
+
         if self.t_i is None:
             self.t_i = t
         self.x_meas.append(x)
@@ -153,7 +151,7 @@ class TrajPred(Node):
         self.z_meas.append(z)
         self.t.append(t - self.t_i)
         self.prev_loc = loc
-        
+
         if not np.any(np.isnan(self.theta)):
             self.pred.clear()
             t = np.linspace(0, self.t[-1])
@@ -166,8 +164,6 @@ class TrajPred(Node):
                 self.add_point(x, y, z, 'pred')
 
             self.publish_marker('pred')
-            
-        
 
     def plot_callback(self, request, response):
         """Plot callback."""
@@ -247,15 +243,22 @@ class TrajPred(Node):
             m.color.b = 1.0
             m.points = self.pred
             self.ball_pred_pub.publish(m)
-    
+
     def reset_callback(self, request, response):
         self.get_logger().info('Resetting trajectory predictor for new throw')
 
         self.rls.reset()
 
         self.t_i = None
-        self.theta = np.array([np.nan, np.nan, np.nan,
-                            np.nan, np.nan, np.nan, np.nan])
+        self.theta = np.array([
+            np.nan,
+            np.nan,
+            np.nan,
+            np.nan,
+            np.nan,
+            np.nan,
+            np.nan]
+        )
 
         self.x_meas.clear()
         self.y_meas.clear()

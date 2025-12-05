@@ -11,7 +11,15 @@ def angle_between(a, b):
 
 class LSMADParabola:
     def __init__(
-        self, x_bounds, y_bounds, z_bounds, N=5, N_best=3, v_gate=10, window_size=15, gate_residual_thresh=0.2,
+        self,
+        x_bounds,
+        y_bounds,
+        z_bounds,
+        N=5,
+        N_best=3,
+        v_gate=10,
+        window_size=15,
+        gate_residual_thresh=0.2,
         min_inliers_for_gate=5
     ):
         self.theta_i = np.array([np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan])
@@ -90,7 +98,7 @@ class LSMADParabola:
         theta_best = np.linalg.lstsq(H_best, y_best_full, rcond=None)[0]
         self.theta = theta_best.copy()
         self.meas_prev = np.array([t_best[-1], x_best[-1], y_best[-1], z_best[-1]])
-        
+
         inlier_res = residuals[best_idx]
         rms_inlier = np.sqrt(np.mean(inlier_res**2))
 
