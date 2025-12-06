@@ -2,6 +2,7 @@ from catchers_vision.trajectory_prediction import LSMADParabola
 from geometry_msgs.msg import Point, PoseStamped, TransformStamped
 import matplotlib.pyplot as plt
 import numpy as np
+from rcl_interfaces.msg import ParameterDescriptor, ParameterType
 import rclpy
 from rclpy.node import Node
 from std_srvs.srv import Empty
@@ -18,13 +19,61 @@ class TrajPred(Node):
         """Initialize the ball tracking node."""
         super().__init__('traj_pred')
         self.get_logger().info('traj_pred')
-        self.rls = LSMADParabola(
+
+        self.declare_parameter(
+            'x_limits',
             [0.0, 1.0],
+            descriptor=ParameterDescriptor(type=ParameterType.PARAMETER_DOUBLE_ARRAY)
+        )
+        self.declare_parameter(
+            'y_limits',
             [-1.0, 1.0],
-            [0.19, 0.2],
-            N=7,
-            N_best=4,
-            v_gate=10
+            descriptor=ParameterDescriptor(type=ParameterType.PARAMETER_DOUBLE_ARRAY)
+        )
+        self.declare_parameter(
+            'z_limits',
+            [0.0, 0.2],
+            descriptor=ParameterDescriptor(type=ParameterType.PARAMETER_DOUBLE_ARRAY)
+        )
+        self.declare_parameter(
+            'N',
+            7,
+        )
+        self.declare_parameter(
+            'N_best',
+            4
+        )
+        self.declare_parameter(
+            'v_gate',
+            10
+        )
+        self.declare_parameter(
+            'window_size',
+            15
+        )
+        self.declare_parameter(
+            'gate_residual_thresh',
+            0.2
+        )
+        self.declare_parameter(
+            'min_inliers_for_gate',
+            5
+        )
+
+        self.x_lim = self.get_parameter('x_limits').value
+        self.y_lim = self.get_parameter('y_limits').value
+        self.z_lim = self.get_parameter('z_limits').value
+        self.N = self.get_parameter('N').value
+        self.N_best = self.get_parameter('N_best').value
+        self.v_gate = self.get_parameter('v_gate').value
+
+        self.rls = LSMADParabola(
+            self.x_lim,
+            self.y_lim,
+            self.z_lim,
+            N=self.N,
+            N_best=self.N_best,
+            v_gate=self.v_gate
         )
 
         self.plot = self.create_service(

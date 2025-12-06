@@ -187,11 +187,6 @@ class BallTrack(Node):
 
     def broadcast_ball(self, location):
         """Broadcast ball tf to tf tree."""
-        # if location[2] != -1.0:
-        #     self.get_logger().info(f'ball detected at {location}')
-        # else:
-        #     self.get_logger().info('Ball not detected!')
-
         pt = PointStamped()
         pt.header.stamp = self.get_clock().now().to_msg()
         pt.point.x = location[0]

@@ -24,7 +24,4 @@
     <node pkg="catchers_vision" exec="ball_track" if="$(eval '\'$(var calibrate)\'==\'false\'')">
         <param from="$(find-pkg-share catchers_vision)/config/ball_track.yaml"/>
     </node>
-
-    <node pkg="catchers_vision" exec="traj_pred_node" if="$(eval '\'$(var calibrate)\'==\'false\'')">
-    </node>
 </launch>
