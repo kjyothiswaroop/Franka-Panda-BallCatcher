@@ -173,7 +173,11 @@ class BallTrack(Node):
 
                 results = self.model(color_img)
                 class_names = self.model.names
-                frame = results[0].plot()
+                result = results[0]
+                thresh = result.boxes.conf >= 0.70
+                result.boxes = result.boxes[thresh]
+                frame = result.plot()
+
                 cx, cy = self.img_proc.yolo_find_ball(results[0], class_names)
                 location = self.img_proc.depth_extract(cx, cy, depth_img, self.intrinsics)
                 yolo_msg = self.bridge.cv2_to_imgmsg(frame, encoding='bgr8')
@@ -183,10 +187,10 @@ class BallTrack(Node):
 
     def broadcast_ball(self, location):
         """Broadcast ball tf to tf tree."""
-        if location[2] != -1.0:
-            self.get_logger().info(f'ball detected at {location}')
-        else:
-            self.get_logger().info('Ball not detected!')
+        # if location[2] != -1.0:
+        #     self.get_logger().info(f'ball detected at {location}')
+        # else:
+        #     self.get_logger().info('Ball not detected!')
 
         pt = PointStamped()
         pt.header.stamp = self.get_clock().now().to_msg()

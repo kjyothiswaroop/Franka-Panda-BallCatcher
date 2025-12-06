@@ -115,13 +115,13 @@ class TrajPred(Node):
             np.isclose(loc, self.prev_loc)
         ):
             return
-        self.get_logger().info(f'meas is: x:{x}, y:{y}, z:{z}')
         self.add_point(x, y, z, 'actual')
         self.publish_marker('actual')
 
         self.theta = self.rls.update(x, y, z, t)
         if self.update_goal:
             goal, quat = self.rls.calc_goal([0.0, 0.0, 0.0, 1.0])
+            self.get_logger().info('PUBLISHED GOAL')
         else:
             goal = self.prev_goal
             quat = self.prev_orien
@@ -141,6 +141,7 @@ class TrajPred(Node):
             goal_pose.pose.orientation.y = quat[1]
             goal_pose.pose.orientation.z = quat[2]
             goal_pose.pose.orientation.w = quat[3]
+
             self.goal_pose_pub.publish(goal_pose)
 
             transform = TransformStamped()
@@ -157,6 +158,7 @@ class TrajPred(Node):
             self.broadcaster.sendTransform(transform)
             self.prev_goal = goal
             self.prev_orien = quat
+            self.update_goal = False
 
         if self.t_i is None:
             self.t_i = t
