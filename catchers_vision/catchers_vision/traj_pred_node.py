@@ -19,9 +19,9 @@ class TrajPred(Node):
         super().__init__('traj_pred')
         self.get_logger().info('traj_pred')
         self.rls = LSMADParabola(
+            [0.0, 1.0],
             [-1.0, 1.0],
-            [-1.0, 1.0],
-            [0, 0.2],
+            [0.19, 0.2],
             N=7,
             N_best=4,
             v_gate=10
