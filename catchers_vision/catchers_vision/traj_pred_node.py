@@ -84,6 +84,10 @@ class TrajPred(Node):
 
         self.points = []
         self.pred = []
+        self.update_goal = True
+        self.freeze_dist = 0.5
+        self.prev_goal = np.array([np.nan, np.nan, np.nan])
+        self.prev_orien = (0.0, 0.0, 0.0, 1.0)
 
     def timer_callback(self):
         if self.default_val is None:
@@ -116,9 +120,17 @@ class TrajPred(Node):
         self.publish_marker('actual')
 
         self.theta = self.rls.update(x, y, z, t)
-        goal, quat = self.rls.calc_goal([0.0, 0.0, 0.0, 1.0])
+        if self.update_goal:
+            goal, quat = self.rls.calc_goal([0.0, 0.0, 0.0, 1.0])
+        else:
+            goal = self.prev_goal
+            quat = self.prev_orien
 
         if not np.any(np.isnan(goal)):
+            goal_dist = np.linalg.norm(loc - goal)
+            if goal_dist < self.freeze_dist:
+                self.update_goal = False
+                self.get_logger().info(f'Freezing goal at distance {goal_dist:.3f} m')
             goal_pose = PoseStamped()
             goal_pose.header.frame_id = 'base'
             goal_pose.header.stamp = t_msg
@@ -143,6 +155,8 @@ class TrajPred(Node):
             transform.transform.rotation.z = quat[2]
             transform.transform.rotation.w = quat[3]
             self.broadcaster.sendTransform(transform)
+            self.prev_goal = goal
+            self.prev_orien = quat
 
         if self.t_i is None:
             self.t_i = t
@@ -269,6 +283,9 @@ class TrajPred(Node):
         self.pred.clear()
 
         self.prev_loc = self.default_val
+        self.prev_goal = np.array([np.nan, np.nan, np.nan])
+        self.prev_orien = (0.0, 0.0, 0.0, 1.0)
+        self.update_goal = True
 
         self.publish_marker('actual')
         self.publish_marker('pred')
