@@ -128,7 +128,7 @@ class TrajPred(Node):
 
         if not np.any(np.isnan(goal)):
             goal_dist = np.linalg.norm(loc - goal)
-            if goal_dist < self.freeze_dist:
+            if self.update_goal and goal_dist < self.freeze_dist:
                 self.update_goal = False
                 self.get_logger().info(f'Freezing goal at distance {goal_dist:.3f} m')
             goal_pose = PoseStamped()
