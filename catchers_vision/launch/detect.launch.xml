@@ -4,8 +4,8 @@
 
     <include file="$(find-pkg-share realsense2_camera)/launch/rs_launch.py" if="$(eval '\'$(var calibrate)\'==\'false\'')">
         <arg name="align_depth.enable" value="true"/>
-        <arg name="depth_module.depth_profile" value="640x480x60"/>
-        <arg name="rgb_camera.color_profile" value="640x480x60"/>
+        <arg name="depth_module.depth_profile" value="1280x720x30"/>
+        <arg name="rgb_camera.color_profile" value="1280x720x30"/>
     </include>
 
     <include file="$(find-pkg-share realsense2_camera)/launch/rs_launch.py" if="$(eval '\'$(var calibrate)\'==\'true\'')"/>

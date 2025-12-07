@@ -62,8 +62,11 @@ class ZedTracker(Node):
         msg_det.header.stamp = time_now
         msg_det.header.frame_id = 'zed_camera_frame'
         self.det_img_pub.publish(msg_det)
-
-        self.broadcast_ball(pos, time_now)
+        if pos:
+            self.broadcast_ball(pos, time_now)
+        else:
+            self.broadcast_ball([-1.0,-1.0,-1.0], time_now)
+            
 
     def broadcast_ball(self, location, time):
         """Broadcast ball tf to tf tree."""
