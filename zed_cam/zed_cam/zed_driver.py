@@ -148,7 +148,7 @@ class ZedDriver(Node):
             raise RuntimeError(f'ZED.open() returned {status}')
 
         # get resolution and intrinsics
-        res = self.zed.get_resolution()
+        res = sl.get_resolution(self.zed_resolution)
         self.width = int(res.width)
         self.height = int(res.height)
 
