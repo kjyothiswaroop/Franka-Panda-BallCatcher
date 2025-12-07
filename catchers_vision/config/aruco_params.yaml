@@ -2,7 +2,7 @@
   ros__parameters:
     marker_size: 0.1
     aruco_dictionary_id: DICT_6X6_1000
-    image_topic: /camera/camera/color/image_raw
-    camera_info_topic: /camera/camera/color/camera_info
-    camera_frame: camera_color_optical_frame
+    image_topic: /zed/image_raw
+    camera_info_topic: /zed/camera_info
+    camera_frame: zed_camera_link
     aruco_ids: [25]

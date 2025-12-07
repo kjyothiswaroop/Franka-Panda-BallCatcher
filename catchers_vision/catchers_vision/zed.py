@@ -13,8 +13,8 @@ class ZedImage():
         self.init_params.depth_mode = sl.DEPTH_MODE.NEURAL
         self.init_params.coordinate_units = sl.UNIT.METER
         self.init_params.sdk_verbose = 1
-        self.init_params.camera_fps = 100
-        self.init_params.camera_resolution = sl.RESOLUTION.VGA
+        self.init_params.camera_fps = 60
+        self.init_params.camera_resolution = sl.RESOLUTION.HD720
         status = self.zed.open(self.init_params)
         if status != sl.ERROR_CODE.SUCCESS:
             raise RuntimeError(f'ZED failed to open: {repr(status)}')
@@ -28,6 +28,8 @@ class ZedImage():
 
         self.left_cam = self.calib.left_cam
         self.right_cam = self.calib.right_cam
+        
+        self.path = onnx_path
 
         if os.path.exists(onnx_path):
             print(f'[INFO] Found model at: {onnx_path}')
@@ -45,8 +47,8 @@ class ZedImage():
                 #positional_tracking_param.set_as_static = True
                 self.zed.enable_positional_tracking(positional_tracking_param)
 
-            status = self.zed.enable_object_detection(self.obj_param)
-            if status == sl.ERROR_CODE.SUCCESS:
+            self.status = self.zed.enable_object_detection(self.obj_param)
+            if self.status == sl.ERROR_CODE.SUCCESS:
                 self.objects = sl.Objects()
                 self.obj_runtime_param = sl.ObjectDetectionRuntimeParameters()
                 self.obj_runtime_param.detection_confidence_threshold = threshold
@@ -68,7 +70,7 @@ class ZedImage():
         raw_image = cv2.cvtColor(raw_image, cv2.COLOR_BGRA2BGR)
         det_image = raw_image.copy()
         positions_3d = [-1.0, -1.0, -1.0]
-        if self.objects:
+        if os.path.exists(self.path):
             self.zed.retrieve_objects(self.objects, self.obj_runtime_param)
             best_obj = max(self.objects.object_list, key=lambda o: o.confidence, default=None)
             if best_obj is not None and best_obj.confidence > self.thresh:

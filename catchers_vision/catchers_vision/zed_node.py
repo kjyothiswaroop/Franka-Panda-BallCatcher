@@ -18,6 +18,7 @@ class ZedTracker(Node):
 
         pkg_share = get_package_share_directory('catchers_vision')
         model_path = os.path.join(pkg_share, 'model', 'yolo.onnx')
+        model_path = ''
         self.zed_obj = zed.ZedImage(model_path)
 
         #Establish broadcaster # noqa: E26
@@ -64,12 +65,12 @@ class ZedTracker(Node):
 
         msg_raw = self.bridge.cv2_to_imgmsg(raw_img, encoding='bgr8')
         msg_raw.header.stamp = time_now
-        msg_raw.header.frame_id = 'zed_camera_frame'
+        msg_raw.header.frame_id = 'zed_camera_link'
         self.raw_img_pub.publish(msg_raw)
 
         msg_det = self.bridge.cv2_to_imgmsg(det_img, encoding='bgr8')
         msg_det.header.stamp = time_now
-        msg_det.header.frame_id = 'zed_camera_frame'
+        msg_det.header.frame_id = 'zed_camera_link'
         self.det_img_pub.publish(msg_det)
         if pos:
             self.broadcast_ball(pos, time_now)
@@ -81,7 +82,7 @@ class ZedTracker(Node):
         """Broadcast ball tf to tf tree."""
         pt = PointStamped()
         pt.header.stamp = time
-        pt.header.frame_id = 'zed_camera_frame'
+        pt.header.frame_id = 'zed_camera_link'
         pt.point.x = float(location[0])
         pt.point.y = float(location[1])
         pt.point.z = float(location[2])
@@ -89,7 +90,7 @@ class ZedTracker(Node):
 
         transform = TransformStamped()
         transform.header.stamp = time
-        transform.header.frame_id = 'zed_camera_frame'
+        transform.header.frame_id = 'zed_camera_link'
         transform.child_frame_id = 'ball'
         transform.transform.translation.x = float(location[0])
         transform.transform.translation.y = float(location[1])

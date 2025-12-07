@@ -2,14 +2,7 @@
     <arg name="demo" default="true"/>
     <arg name="calibrate" default="false"/>
 
-    <include file="$(find-pkg-share realsense2_camera)/launch/rs_launch.py" if="$(eval '\'$(var calibrate)\'==\'false\'')">
-        <arg name="align_depth.enable" value="true"/>
-        <arg name="depth_module.depth_profile" value="1280x720x30"/>
-        <arg name="rgb_camera.color_profile" value="1280x720x30"/>
-    </include>
-
-    <!-- <include file="$(find-pkg-share realsense2_camera)/launch/rs_launch.py" if="$(eval '\'$(var calibrate)\'==\'true\'')"/> -->
-    <node pkg="catchers_vision" exec="zed_tracker" if="$(eval '\'$(var calibrate)\'==\'true\'')">
+    <node pkg="catchers_vision" exec="zed_tracker">
     </node>
 
     <include file="$(find-pkg-share robot_mover)/launch/catchball.launch.xml">
