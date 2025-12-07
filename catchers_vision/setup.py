@@ -28,7 +28,8 @@ setup(
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
         *recursive_files('share/' + package_name, 'launch'),
-        *recursive_files('share/' + package_name, 'config')
+        *recursive_files('share/' + package_name, 'config'),
+        *recursive_files('share/' + package_name, 'model')
     ],
     install_requires=['setuptools'],
     zip_safe=True,
@@ -45,7 +46,8 @@ setup(
         'console_scripts': [
             'aruco_detect = catchers_vision.aruco:main',
             'ball_track = catchers_vision.ball_track:main',
-            'traj_pred_node = catchers_vision.traj_pred_node:main'
+            'traj_pred_node = catchers_vision.traj_pred_node:main',
+            'zed_tracker = catchers_vision.zed_node:main'
         ],
     },
 )

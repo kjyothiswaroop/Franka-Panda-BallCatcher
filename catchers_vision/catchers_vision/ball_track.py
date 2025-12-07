@@ -199,7 +199,7 @@ class BallTrack(Node):
         transform.header.frame_id = 'camera_color_optical_frame'
         transform.child_frame_id = 'ball'
         transform.transform.translation.x = location[0]
-        transform.transform.translation.y = location[1] - 0.05
+        transform.transform.translation.y = location[1]
         transform.transform.translation.z = location[2]
         transform.transform.rotation.w = 1.0
         self.broadcaster.sendTransform(transform)
