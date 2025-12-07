@@ -58,6 +58,8 @@ class BallTrack(Node):
             ParameterDescriptor(type=ParameterType.PARAMETER_STRING)
         )
         self.declare_parameter('model', value='ball-detect-3.pt')
+        
+        self.declare_parameter('camera_frame', 'zed_camera_link')
 
         #Read param values. # noqa: E26
         self.mode = (
@@ -71,6 +73,7 @@ class BallTrack(Node):
         self.color_image_topic = self.get_parameter('color_image_topic').value
         self.depth_image_topic = self.get_parameter('depth_image_topic').value
         self.camera_info_topic = self.get_parameter('camera_info_topic').value
+        self.camera_frame = self.get_parameter('camera_frame').value
 
         #Subscribers # noqa: E26
         self.color_sub = Subscriber(
@@ -184,6 +187,9 @@ class BallTrack(Node):
                 self.image_pub.publish(yolo_msg)
 
                 self.broadcast_ball(location)
+            else:
+                self.get_logger().info('NO CAMERA INFO')
+                
 
     def broadcast_ball(self, location):
         """Broadcast ball tf to tf tree."""
@@ -196,7 +202,7 @@ class BallTrack(Node):
 
         transform = TransformStamped()
         transform.header.stamp = self.get_clock().now().to_msg()
-        transform.header.frame_id = 'camera_color_optical_frame'
+        transform.header.frame_id = self.camera_frame
         transform.child_frame_id = 'ball'
         transform.transform.translation.x = location[0]
         transform.transform.translation.y = location[1]

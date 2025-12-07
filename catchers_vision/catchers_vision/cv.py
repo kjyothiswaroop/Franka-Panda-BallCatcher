@@ -137,11 +137,15 @@ class image_processor():
     def depth_extract(self, cx, cy, depth_img, intr):
         """Extract depth from points and depth img."""
         if cx is not None:
-            depth = depth_img[cy, cx] * 0.001
+            depth = depth_img[cy, cx] 
             fx, fy, cx0, cy0 = intr
             X = (cx - cx0) * depth / fx
             Y = (cy - cy0) * depth / fy
             Z = depth
-            return np.array([X, Y, Z])
+            meas = np.array([X, Y, Z])
+            if not np.any(np.isnan(meas)):
+                return meas
+            else:
+                return [-1.0, -1.0, -1.0]
         else:
             return [-1.0, -1.0, -1.0]

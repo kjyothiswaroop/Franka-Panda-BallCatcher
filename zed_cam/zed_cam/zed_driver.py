@@ -168,10 +168,10 @@ class ZedDriver(Node):
         except Exception:
             dist = [0.0]*5
 
-        self.dist = dist
+        self.dist = list(left_cam.disto)
         # Prepare sl.Mat containers
-        self.mat_rgb = sl.Mat(self.width, self.height, sl.MAT_TYPE.U8_C4)
-        self.mat_depth = sl.Mat(self.width, self.height, sl.MAT_TYPE.F32_C1)
+        self.mat_rgb = sl.Mat()
+        self.mat_depth = sl.Mat()
 
         self.get_logger().info(
             f'ZED opened: {self.width}x{self.height} @ {self.zed_fps} fps (requested). fx={self.fx:.2f}, fy={self.fy:.2f}'
@@ -232,11 +232,6 @@ class ZedDriver(Node):
                 self.fx, 0.0, self.cx,
                 0.0, self.fy, self.cy,
                 0.0, 0.0, 1.0
-            ]
-            cam_info_msg.p = [
-                self.fx, 0.0, self.cx, 0.0,
-                0.0, self.fy, self.cy, 0.0,
-                0.0, 0.0, 1.0, 0.0
             ]
             cam_info_msg.distortion_model = 'plumb_bob'
             cam_info_msg.d = self.dist

@@ -1,9 +1,10 @@
 /ball_track:
   ros__parameters:
-    mode: yolo
+    mode: cv
     ball_type: orange
-    image_topic: /camera/image_raw
-    color_image_topic: /camera/camera/color/image_raw
-    depth_image_topic: /camera/camera/aligned_depth_to_color/image_raw
-    camera_info: /camera/camera/color/camera_info
+    image_topic: /zed/image_raw
+    color_image_topic: /zed/image_raw
+    depth_image_topic: /zed/depth_image
+    camera_info_topic: /zed/camera_info
     model: ball-detect-hr.pt
+    camera_frame: zed_camera_link

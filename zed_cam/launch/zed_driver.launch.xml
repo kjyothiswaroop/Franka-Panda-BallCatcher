@@ -1,0 +1,5 @@
+<launch>
+    <node pkg="zed_cam" exec="zed_driver">
+        <param from="$(find-pkg-share zed_cam)/config/zed_driver.yaml"/>
+    </node>
+</launch>

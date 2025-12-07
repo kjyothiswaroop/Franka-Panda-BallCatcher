@@ -1,0 +1,8 @@
+/zed_driver:
+  ros__parameters:
+    raw_image_topic: /zed/image_raw
+    depth_image_topic: /zed/depth_image
+    camera_info: /zed/camera_info
+    resolution: HD720
+    fps: 60
+    camera_frame: zed_camera_link
