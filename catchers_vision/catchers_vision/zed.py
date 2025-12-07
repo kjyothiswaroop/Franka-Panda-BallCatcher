@@ -22,6 +22,12 @@ class ZedImage():
         self.runtime_params = sl.RuntimeParameters()
         self.output_img_zed = sl.Mat()
         self.thresh = threshold
+        
+        self.cam_info = self.zed.get_camera_information()
+        self.calib = self.cam_info.camera_configuration.calibration_parameters
+
+        self.left_cam = self.calib.left_cam
+        self.right_cam = self.calib.right_cam
 
         if os.path.exists(onnx_path):
             print(f'[INFO] Found model at: {onnx_path}')

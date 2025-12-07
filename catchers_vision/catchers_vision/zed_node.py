@@ -5,7 +5,7 @@ from cv_bridge import CvBridge
 from geometry_msgs.msg import PointStamped, TransformStamped
 import rclpy
 from rclpy.node import Node
-from sensor_msgs.msg import Image
+from sensor_msgs.msg import CameraInfo, Image
 from tf2_ros import TransformBroadcaster
 
 from . import zed
@@ -36,17 +36,26 @@ class ZedTracker(Node):
         )
         self.ball_pos_pub = self.create_publisher(
             PointStamped,
-            '/ball_pose',
+            'ball_pose',
+            10
+        )
+        
+        self.camera_info_pub = self.create_publisher(
+            CameraInfo,
+            'zed/camera_info',
             10
         )
 
         #Timer callback # noqa: E26
         self.timer = self.create_timer(0.01, self.timer_callback)
         self.bridge = CvBridge()
+        self.calib = self.make_camera_info('zed_camera_link')
 
     def timer_callback(self):
         """Timer callback."""
         time_now = self.get_clock().now().to_msg()
+        self.calib.header.stamp = time_now
+        self.camera_info_pub.publish(self.calib)
 
         raw_img, det_img, pos = self.zed_obj.get_frame()
 
@@ -87,6 +96,45 @@ class ZedTracker(Node):
         transform.transform.translation.z = float(location[2])
         transform.transform.rotation.w = 1.0
         self.broadcaster.sendTransform(transform)
+    
+    def make_camera_info(self, frame_id):
+        """Make CameraInfo msg."""
+        calib = self.zed_obj.calib
+        left_cam = self.zed_obj.left_cam
+        width = self.zed_obj.cam_info.camera_configuration.resolution.width
+        height = self.zed_obj.cam_info.camera_configuration.resolution.height
+
+        msg = CameraInfo()
+        msg.header.frame_id = frame_id
+        msg.width = width
+        msg.height = height
+
+        
+        fx = left_cam.fx
+        fy = left_cam.fy
+        cx = left_cam.cx
+        cy = left_cam.cy
+        msg.k = [
+            fx, 0.0, cx,
+            0.0, fy, cy,
+            0.0, 0.0, 1.0,
+        ]
+
+        # R = calib.R  
+        # msg.r = list(R)  
+       
+        # Tx = calib.T[0]
+        # Tx_pixels = -fx * Tx  
+        # msg.p = [
+        #     fx, 0.0, cx, Tx_pixels,
+        #     0.0, fy, cy, 0.0,
+        #     0.0, 0.0, 1.0, 0.0,
+        # ]
+
+        msg.distortion_model = "plumb_bob"
+        msg.d = list(left_cam.disto) 
+
+        return msg
 
 
 def main(args=None):
