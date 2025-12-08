@@ -39,16 +39,22 @@ class LSMADParabola:
         self.gate_residual_thresh = gate_residual_thresh
         self.min_inliers_for_gate = min_inliers_for_gate
 
-    def LS_MAD(self, t, x, y, z, N_best=3, k=3):
+    def LS_MAD(self, t, x, y, z, N_best=3, k=3, use_recency_weights=True):
         x = np.array(x)
         y = np.array(y)
         z = np.array(z)
         t = np.array(t)
         H_list = []
+
         if self.t_i is None:
             self.t_i = t[0]
         t = t - self.t_i
         n_pts = len(t)
+
+        # Define recency weights (oldest → newest)
+        weights = np.linspace(1.0, 3.0, n_pts)
+
+        # Build design matrix H
         for ti in t:
             H_i = np.array(
                 [
@@ -60,17 +66,33 @@ class LSMADParabola:
             H_list.append(H_i)
         H = np.vstack(H_list)
         y_full = np.vstack([x, y, z]).T.reshape(-1)
-        theta_ls = np.linalg.lstsq(H, y_full, rcond=None)[0]
+
+        # ---------- First LS fit (all points) ----------
+        if use_recency_weights:
+            # Weighted least squares: apply sqrt(weights) to rows
+            w_rows = np.repeat(weights, 3)         # 3 rows per time step
+            w_sqrt = np.sqrt(w_rows)
+            H_w = H * w_sqrt[:, None]
+            y_w = y_full * w_sqrt
+            theta_ls = np.linalg.lstsq(H_w, y_w, rcond=None)[0]
+        else:
+            # Standard unweighted least squares
+            theta_ls = np.linalg.lstsq(H, y_full, rcond=None)[0]
+        # ------------------------------------------------
+
+        # Residuals (unweighted) for MAD-based outlier detection
         r_full = y_full - H @ theta_ls
         r_xyz = r_full.reshape(-1, 3)
         residuals = np.linalg.norm(r_xyz, axis=1)
         med = np.median(residuals)
         mad = np.median(np.abs(residuals - med))
+
         if mad == 0:
             mask = np.ones(n_pts, dtype=bool)
         else:
             thresh = med + k * mad
             mask = residuals <= thresh
+
         inlier_idx = np.nonzero(mask)[0]
         if len(inlier_idx) <= N_best:
             best_idx = np.argsort(residuals)[:N_best]
@@ -78,10 +100,13 @@ class LSMADParabola:
             inlier_res = residuals[inlier_idx]
             order = np.argsort(inlier_res)
             best_idx = inlier_idx[order[:N_best]]
+
+        # Extract best (inlier) subset
         t_best = t[best_idx]
         x_best = x[best_idx]
         y_best = y[best_idx]
         z_best = z[best_idx]
+
         H_best = []
         for ti in t_best:
             H_i = np.array(
@@ -92,10 +117,21 @@ class LSMADParabola:
                 ]
             )
             H_best.append(H_i)
-
         H_best = np.vstack(H_best)
         y_best_full = np.vstack([x_best, y_best, z_best]).T.reshape(-1)
-        theta_best = np.linalg.lstsq(H_best, y_best_full, rcond=None)[0]
+
+        # ---------- Final LS fit on inliers ----------
+        if use_recency_weights:
+            w_best = weights[best_idx]
+            w_best_rows = np.repeat(w_best, 3)
+            w_best_sqrt = np.sqrt(w_best_rows)
+            H_best_w = H_best * w_best_sqrt[:, None]
+            y_best_w = y_best_full * w_best_sqrt
+            theta_best = np.linalg.lstsq(H_best_w, y_best_w, rcond=None)[0]
+        else:
+            theta_best = np.linalg.lstsq(H_best, y_best_full, rcond=None)[0]
+        # ---------------------------------------------
+
         self.theta = theta_best.copy()
         self.meas_prev = np.array([t_best[-1], x_best[-1], y_best[-1], z_best[-1]])
 
@@ -106,6 +142,7 @@ class LSMADParabola:
                 rms_inlier < self.gate_residual_thresh and
                 not np.isnan(self.theta).any()):
             self.v_gate_active = True
+
 
     def update(self, x, y, z, t):
         pos = np.array([x, y, z])
