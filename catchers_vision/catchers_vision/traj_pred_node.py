@@ -137,6 +137,7 @@ class TrajPred(Node):
         self.freeze_dist = 0.5
         self.prev_goal = np.array([np.nan, np.nan, np.nan])
         self.prev_orien = (0.0, 0.0, 0.0, 1.0)
+        self.publish_parab = False
 
     def timer_callback(self):
         if self.default_val is None:
@@ -225,10 +226,11 @@ class TrajPred(Node):
             y_pred = model[2]*t + model[3]
             z_pred = model[4]*(t**2) + model[5]*t + model[6]
 
-            for x, y, z in zip(x_pred, y_pred, z_pred):
-                self.add_point(x, y, z, 'pred')
-
-            self.publish_marker('pred')
+            if not self.publish_parab and not self.update_goal:
+                for x, y, z in zip(x_pred, y_pred, z_pred):
+                    self.add_point(x, y, z, 'pred')
+                self.publish_marker('pred')
+                self.publish_parab = True
 
     def plot_callback(self, request, response):
         """Plot callback."""
@@ -337,7 +339,7 @@ class TrajPred(Node):
         self.prev_goal = np.array([np.nan, np.nan, np.nan])
         self.prev_orien = (0.0, 0.0, 0.0, 1.0)
         self.update_goal = True
-
+        self.publish_parab = False
         self.publish_marker('actual')
         self.publish_marker('pred')
 

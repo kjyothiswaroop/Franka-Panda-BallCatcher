@@ -1,10 +1,10 @@
 /traj_pred:
   ros__parameters:
-    x_limits: [0.0, 1.0]
-    y_limits: [-1.0, 1.0]
-    z_limits: [0.0, 0.2]
-    N: 7
-    N_best: 4
+    x_limits: [0.2, 0.8]
+    y_limits: [-0.8, 0.8]
+    z_limits: [0.19, 0.2]
+    N: 15
+    N_best: 5
     v_gate: 10
     window_size: 15
     gate_residual_thresh: 0.2
