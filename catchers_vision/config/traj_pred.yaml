@@ -3,8 +3,8 @@
     x_limits: [0.2, 0.8]
     y_limits: [-0.8, 0.8]
     z_limits: [0.19, 0.2]
-    N: 12
-    N_best: 4
+    N: 15
+    N_best: 5
     v_gate: 10
     window_size: 8
     gate_residual_thresh: 0.2

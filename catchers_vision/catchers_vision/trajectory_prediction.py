@@ -52,7 +52,7 @@ class LSMADParabola:
         n_pts = len(t)
 
         # Define recency weights (oldest → newest)
-        weights = np.linspace(1.0, 3.0, n_pts)
+        weights = np.linspace(1.0, 7.0, n_pts)
 
         # Build design matrix H
         for ti in t:
