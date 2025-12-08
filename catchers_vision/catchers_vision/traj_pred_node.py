@@ -138,6 +138,7 @@ class TrajPred(Node):
         self.prev_goal = np.array([np.nan, np.nan, np.nan])
         self.prev_orien = (0.0, 0.0, 0.0, 1.0)
         self.publish_parab = False
+        self.starting_pos = [0,0,0]
 
     def timer_callback(self):
         if self.default_val is None:
@@ -170,7 +171,7 @@ class TrajPred(Node):
 
         self.theta = self.rls.update(x, y, z, t)
         if self.update_goal:
-            goal, quat = self.rls.calc_goal([0.0, 0.0, 0.0, 1.0])
+            goal, quat = self.rls.calc_goal([0.0, 0.0, 0.0, 1.0], self.starting_pos)
             self.get_logger().info('PUBLISHED GOAL')
         else:
             goal = self.prev_goal

@@ -197,16 +197,14 @@ class LSMADParabola:
         t = np.where(t < 0, np.nan, t)
         return t
 
-    def calc_goal(self, eff_quat):
-        """
-        Calc goal.
-
-        returns pose and quat (np array) orientation of basket to catch ball,
-        eff_quat is the current orientation of the basket
-        """
+    def calc_goal(self, eff_quat, eff_pos):
         if np.any(np.isnan(self.theta)):
             return np.array([np.nan, np.nan, np.nan]), eff_quat
+
+        eff_pos = np.asarray(eff_pos, dtype=float).reshape(3)
+
         eff_R = tf.quaternion_matrix(eff_quat)[:3, :3]
+
         t_int_x = self.find_t_linear(self.bounds[:2], self.theta[0], self.theta[1])
         t_int_y = self.find_t_linear(self.bounds[2:4], self.theta[2], self.theta[3])
         t_int_z = self.find_t_quad(self.bounds[4:])
@@ -214,41 +212,54 @@ class LSMADParabola:
         t_cand = t_cand[np.isfinite(t_cand)]
         if t_cand.size == 0:
             return np.array([np.nan, np.nan, np.nan]), eff_quat
+
         pts = self.pos_at(t_cand)
         mask_inside = self.inside_box(pts)
         if not np.any(mask_inside):
             return np.array([np.nan, np.nan, np.nan]), eff_quat
+
         t_valid = t_cand[mask_inside]
         t_hit = np.min(t_valid)
-        vx = self.theta[0]
-        vy = self.theta[2]
-        vz = 2 * self.theta[4] * t_hit + self.theta[5]
-        vel_vec = np.array([vx, vy, vz])
-        vel_mag = np.linalg.norm(vel_vec)
-        if vel_mag < 1e-9:
-            return self.pos_at(t_hit), eff_quat
-        z_new = -vel_vec / vel_mag
-        z_cur = eff_R[:, 2]
-        w = np.cross(z_cur, z_new)
+
+        goal_pos = self.pos_at(t_hit)
+
+        dir_vec = goal_pos - eff_pos
+        dir_mag = np.linalg.norm(dir_vec)
+        if dir_mag < 1e-9:
+            return goal_pos, eff_quat
+
+        x_new = dir_vec / dir_mag
+
+        x_cur = eff_R[:, 0]
+
+        w = np.cross(x_cur, x_new)
         w_norm = np.linalg.norm(w)
+
         R_rot = np.eye(3)
+
         if w_norm > 1e-9:
-            th = angle_between(z_cur, z_new)
+            th = angle_between(x_cur, x_new)
             w_brac = mr.VecToso3(w / w_norm * th)
             R_rot = mr.MatrixExp3(w_brac)
         else:
-            if np.dot(z_cur, z_new) < 0:
-                tmp = np.array([1.0, 0.0, 0.0])
-                if abs(np.dot(tmp, z_cur)) > 0.9:
-                    tmp = np.array([0.0, 1.0, 0.0])
-                axis = np.cross(z_cur, tmp)
+            dot = np.dot(x_cur, x_new)
+            if dot < 0:
+                tmp = np.array([0.0, 1.0, 0.0])
+                if abs(np.dot(tmp, x_cur)) > 0.9:
+                    tmp = np.array([0.0, 0.0, 1.0])
+                axis = np.cross(x_cur, tmp)
                 axis /= np.linalg.norm(axis)
                 w_brac = mr.VecToso3(axis * np.pi)
                 R_rot = mr.MatrixExp3(w_brac)
+            else:
+                R_rot = np.eye(3)
+
         R_g = R_rot @ eff_R
         T_g = np.eye(4)
         T_g[:3, :3] = R_g
-        return self.pos_at(t_hit), tf.quaternion_from_matrix(T_g)
+        goal_quat = tf.quaternion_from_matrix(T_g)
+
+        return goal_pos, goal_quat
 
 
 if __name__ == '__main__':
@@ -280,7 +291,7 @@ if __name__ == '__main__':
     y_pred = model[2] * t + model[3]
     z_pred = model[4] * (t**2) + model[5] * t + model[6]
 
-    goal, quat = rls.calc_goal([0.0, 0.0, 0.0, 1.0])
+    goal, quat = rls.calc_goal([0.0, 0.0, 0.0, 1.0],[0,0,0])
     print(quat)
     print(goal)
 
