@@ -200,11 +200,7 @@ class LSMADParabola:
     def calc_goal(self, eff_quat, eff_pos):
         if np.any(np.isnan(self.theta)):
             return np.array([np.nan, np.nan, np.nan]), eff_quat
-
-        eff_pos = np.asarray(eff_pos, dtype=float).reshape(3)
-
         eff_R = tf.quaternion_matrix(eff_quat)[:3, :3]
-
         t_int_x = self.find_t_linear(self.bounds[:2], self.theta[0], self.theta[1])
         t_int_y = self.find_t_linear(self.bounds[2:4], self.theta[2], self.theta[3])
         t_int_z = self.find_t_quad(self.bounds[4:])
@@ -212,12 +208,10 @@ class LSMADParabola:
         t_cand = t_cand[np.isfinite(t_cand)]
         if t_cand.size == 0:
             return np.array([np.nan, np.nan, np.nan]), eff_quat
-
         pts = self.pos_at(t_cand)
         mask_inside = self.inside_box(pts)
         if not np.any(mask_inside):
             return np.array([np.nan, np.nan, np.nan]), eff_quat
-
         t_valid = t_cand[mask_inside]
         t_hit = np.min(t_valid)
 
@@ -234,9 +228,7 @@ class LSMADParabola:
 
         w = np.cross(x_cur, x_new)
         w_norm = np.linalg.norm(w)
-
         R_rot = np.eye(3)
-
         if w_norm > 1e-9:
             th = angle_between(x_cur, x_new)
             w_brac = mr.VecToso3(w / w_norm * th)
@@ -251,15 +243,10 @@ class LSMADParabola:
                 axis /= np.linalg.norm(axis)
                 w_brac = mr.VecToso3(axis * np.pi)
                 R_rot = mr.MatrixExp3(w_brac)
-            else:
-                R_rot = np.eye(3)
-
         R_g = R_rot @ eff_R
         T_g = np.eye(4)
         T_g[:3, :3] = R_g
-        goal_quat = tf.quaternion_from_matrix(T_g)
-
-        return goal_pos, goal_quat
+        return self.pos_at(t_hit), tf.quaternion_from_matrix(T_g)
 
 
 if __name__ == '__main__':

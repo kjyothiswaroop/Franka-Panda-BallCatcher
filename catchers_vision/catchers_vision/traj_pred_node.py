@@ -1,15 +1,16 @@
-from catchers_vision.trajectory_prediction import LSMADParabola
-from geometry_msgs.msg import Point, PoseStamped, TransformStamped
 import matplotlib.pyplot as plt
 import numpy as np
-from rcl_interfaces.msg import ParameterDescriptor, ParameterType
 import rclpy
+from geometry_msgs.msg import Point, PoseStamped, TransformStamped
+from rcl_interfaces.msg import ParameterDescriptor, ParameterType
 from rclpy.node import Node
 from std_srvs.srv import Empty
 from tf2_ros import TransformBroadcaster, TransformException
 from tf2_ros.buffer import Buffer
 from tf2_ros.transform_listener import TransformListener
 from visualization_msgs.msg import Marker
+
+from catchers_vision.trajectory_prediction import LSMADParabola
 
 
 class TrajPred(Node):
@@ -134,11 +135,11 @@ class TrajPred(Node):
         self.points = []
         self.pred = []
         self.update_goal = True
-        self.freeze_dist = 0.5
+        self.freeze_dist = 0.7
         self.prev_goal = np.array([np.nan, np.nan, np.nan])
-        self.prev_orien = (0.0, 0.0, 0.0, 1.0)
+        self.prev_orien = (1.0, 0.0, 0.0, 0.0)
         self.publish_parab = False
-        self.starting_pos = [0,0,0]
+        self.starting_pos = [0.307506, -0.0001418, 0.2]
 
     def timer_callback(self):
         if self.default_val is None:
@@ -171,14 +172,15 @@ class TrajPred(Node):
 
         self.theta = self.rls.update(x, y, z, t)
         if self.update_goal:
-            goal, quat = self.rls.calc_goal([0.0, 0.0, 0.0, 1.0], self.starting_pos)
-            self.get_logger().info('PUBLISHED GOAL')
+            goal, quat = self.rls.calc_goal([1.0, 0.0, 0.0, 0.0], self.starting_pos)
+            self.get_logger().info('Updated Goal')
         else:
             goal = self.prev_goal
             quat = self.prev_orien
 
         if not np.any(np.isnan(goal)):
             goal_dist = np.linalg.norm(loc - goal)
+            self.get_logger().info(f'goal dist is {goal_dist:.3f} m')
             if self.update_goal and goal_dist < self.freeze_dist:
                 self.update_goal = False
                 self.get_logger().info(f'Freezing goal at distance {goal_dist:.3f} m')
@@ -232,6 +234,7 @@ class TrajPred(Node):
                     self.add_point(x, y, z, 'pred')
                 self.publish_marker('pred')
                 self.publish_parab = True
+
 
     def plot_callback(self, request, response):
         """Plot callback."""
@@ -338,7 +341,7 @@ class TrajPred(Node):
 
         self.prev_loc = self.default_val
         self.prev_goal = np.array([np.nan, np.nan, np.nan])
-        self.prev_orien = (0.0, 0.0, 0.0, 1.0)
+        self.prev_orien = (1.0, 0.0, 0.0, 0.0)
         self.update_goal = True
         self.publish_parab = False
         self.publish_marker('actual')
