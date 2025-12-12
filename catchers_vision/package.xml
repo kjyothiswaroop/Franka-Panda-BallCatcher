@@ -3,11 +3,24 @@
 <package format="3">
   <name>catchers_vision</name>
   <version>0.0.0</version>
-  <description>TODO: Package description</description>
+  <description>ROS2 Package to track a ball and predict trajectory using a Realsense/Zed Camera.</description>
   <maintainer email="kylezthompson@gmail.com">KThompson2002</maintainer>
+  <maintainer email="kjyothiswaroop00@gmail.com">kjyothiswaroop</maintainer>
+  <maintainer email="anunthramaswami2030@u.northwestern.edu">anunthramaswami</maintainer>
+  <maintainer email="zixinye2026@u.northwestern.edu">zixinye</maintainer>
   <license>MIT</license>
 
+  <exec_depend>geometry_msgs</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
+  <exec_depend>std_srvs</exec_depend>
   <exec_depend>rclpy</exec_depend>
+  <exec_depend>rcl_interfaces</exec_depend>
+  <exec_depend>catchers_vision_interfaces</exec_depend>
+  <exec_depend>tf2_ros</exec_depend>
+  <exec_depend>visualization_msgs</exec_depend>
+  <exec_depend>message_filters</exec_depend>
+  <exec_depend>cv_bridge</exec_depend>
+  <exec_depend>modern_robotics</exec_depend>
 
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>

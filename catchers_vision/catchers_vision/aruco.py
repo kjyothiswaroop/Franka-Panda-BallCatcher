@@ -125,8 +125,8 @@ class arucoNode(Node):
         """
         Info callback for reading the CameraInfo.
 
-        Args
-        ----
+        Parameters
+        ----------
         info_msg : sensor_msgs/msg/CameraInfo
 
         Returns
@@ -141,8 +141,8 @@ class arucoNode(Node):
         """
         Image callback to get the raw image from camera.
 
-        Args
-        ----
+        Parameters
+        ----------
         img_msg : sensor_msgs/msg/Image
 
         Returns
@@ -257,8 +257,8 @@ class arucoNode(Node):
         """
         Publish the aruco marker transform to the TF tree.
 
-        Args
-        ----
+        Parameters
+        ----------
         pose : geometry_msgs/msg/Pose
             Pose of the marker.
 
@@ -270,6 +270,10 @@ class arucoNode(Node):
 
         stamp : float
             Timestamp.
+
+        Returns
+        -------
+        None 
         """
         transform = TransformStamped()
         transform.header.stamp = stamp
