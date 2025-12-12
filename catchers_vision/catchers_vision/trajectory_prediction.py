@@ -5,11 +5,28 @@ import tf_transformations as tf
 
 
 def angle_between(a, b):
+    """
+    Compute the angle between two vectors.
+
+    Parameters
+    ----------
+    a : array-like
+        First input vector.
+    b : array-like
+        Second input vector.
+
+    Returns
+    -------
+    float
+        Angle between the two vectors in radians.
+    """
     dot = np.clip(np.dot(a, b), -1.0, 1.0)
     return np.arccos(dot)
 
 
 class LSMADParabola:
+    """Initialize nessesary parameters for parabola fitting."""
+
     def __init__(
         self,
         x_bounds,
@@ -40,6 +57,32 @@ class LSMADParabola:
         self.min_inliers_for_gate = min_inliers_for_gate
 
     def LS_MAD(self, t, x, y, z, N_best=3, k=3, use_recency_weights=True):
+        """
+        Perform LS-MAD fitting of a 3D parabolic trajectory using optional
+        recency-weighted least squares.
+
+        Parameters
+        ----------
+        t : array-like
+            Time stamps corresponding to each measurement.
+        x : array-like
+            Measured x positions.
+        y : array-like
+            Measured y positions.
+        z : array-like
+            Measured z positions.
+        N_best : int, default=3
+            Number of lowest-residual points retained for the final refit.
+        k : float, default=3
+            Scaling factor for the MAD-based inlier threshold.
+        use_recency_weights : bool, default=True
+            If True, weight recent measurements more heavily in the least-squares fit.
+
+        Returns
+        -------
+        None
+            Updates internal trajectory parameters and gating state.
+        """
         x = np.array(x)
         y = np.array(y)
         z = np.array(z)
@@ -51,10 +94,8 @@ class LSMADParabola:
         t = t - self.t_i
         n_pts = len(t)
 
-        # Define recency weights (oldest → newest)
         weights = np.linspace(1.0, 7.0, n_pts)
 
-        # Build design matrix H
         for ti in t:
             H_i = np.array(
                 [
@@ -67,20 +108,15 @@ class LSMADParabola:
         H = np.vstack(H_list)
         y_full = np.vstack([x, y, z]).T.reshape(-1)
 
-        # ---------- First LS fit (all points) ----------
         if use_recency_weights:
-            # Weighted least squares: apply sqrt(weights) to rows
-            w_rows = np.repeat(weights, 3)         # 3 rows per time step
+            w_rows = np.repeat(weights, 3)
             w_sqrt = np.sqrt(w_rows)
             H_w = H * w_sqrt[:, None]
             y_w = y_full * w_sqrt
             theta_ls = np.linalg.lstsq(H_w, y_w, rcond=None)[0]
         else:
-            # Standard unweighted least squares
             theta_ls = np.linalg.lstsq(H, y_full, rcond=None)[0]
-        # ------------------------------------------------
 
-        # Residuals (unweighted) for MAD-based outlier detection
         r_full = y_full - H @ theta_ls
         r_xyz = r_full.reshape(-1, 3)
         residuals = np.linalg.norm(r_xyz, axis=1)
@@ -101,7 +137,6 @@ class LSMADParabola:
             order = np.argsort(inlier_res)
             best_idx = inlier_idx[order[:N_best]]
 
-        # Extract best (inlier) subset
         t_best = t[best_idx]
         x_best = x[best_idx]
         y_best = y[best_idx]
@@ -120,7 +155,6 @@ class LSMADParabola:
         H_best = np.vstack(H_best)
         y_best_full = np.vstack([x_best, y_best, z_best]).T.reshape(-1)
 
-        # ---------- Final LS fit on inliers ----------
         if use_recency_weights:
             w_best = weights[best_idx]
             w_best_rows = np.repeat(w_best, 3)
@@ -130,7 +164,6 @@ class LSMADParabola:
             theta_best = np.linalg.lstsq(H_best_w, y_best_w, rcond=None)[0]
         else:
             theta_best = np.linalg.lstsq(H_best, y_best_full, rcond=None)[0]
-        # ---------------------------------------------
 
         self.theta = theta_best.copy()
         self.meas_prev = np.array([t_best[-1], x_best[-1], y_best[-1], z_best[-1]])
@@ -145,6 +178,26 @@ class LSMADParabola:
 
 
     def update(self, x, y, z, t):
+        """
+        Update the trajectory estimate with a new 3D measurement LS-MAD fitting.
+
+        Parameters
+        ----------
+        x : float
+            Measured x position.
+        y : float
+            Measured y position.
+        z : float
+            Measured z position.
+        t : float
+            Time stamp of the measurement.
+
+        Returns
+        -------
+        ndarray
+            Current trajectory parameter estimate, or NaNs if insufficient data
+            is available.
+        """
         pos = np.array([x, y, z])
         if (
             self.v_gate is not None
@@ -186,6 +239,7 @@ class LSMADParabola:
         return self.theta
 
     def reset(self):
+        """Resets feilds for another throw."""
         self.t_i = None
         self.meas_prev = None
         self.theta = self.theta_i.copy()
@@ -196,12 +250,40 @@ class LSMADParabola:
         self.v_gate_active = False
 
     def pos_at(self, t):
+        """
+        Evaluate the estimated 3D trajectory position at a given time.
+
+        Parameters
+        ----------
+        t : float or array-like
+            Time value(s) at which to evaluate the trajectory.
+
+        Returns
+        -------
+        ndarray
+            3D position(s) [x, y, z] corresponding to the given time value(s).
+        """
         x = self.theta[0] * t + self.theta[1]
         y = self.theta[2] * t + self.theta[3]
         z = self.theta[4] * t**2 + self.theta[5] * t + self.theta[6]
         return np.stack((x, y, z), axis=-1)
 
     def inside_box(self, pts, eps=1e-9):
+        """
+        Check whether 3D point(s) lie within the bounding box.
+
+        Parameters
+        ----------
+        pts : ndarray
+            Array of 3D point(s) with last dimension [x, y, z].
+        eps : float, default=1e-9
+            Numerical tolerance applied to the bounding box limits.
+
+        Returns
+        -------
+        ndarray of bool
+            Boolean mask indicating which points lie inside the bounding box.
+        """
         x, y, z = pts[..., 0], pts[..., 1], pts[..., 2]
         return (
             (self.bounds[0] - eps <= x)
@@ -213,6 +295,23 @@ class LSMADParabola:
         )
 
     def find_t_linear(self, val, a, b):
+        """
+        Solve for time t from a linear relation a * t + b = val with nonnegative constraint.
+
+        Parameters
+        ----------
+        val : ndarray
+            Target value(s) of the linear function.
+        a : float
+            Linear coefficient multiplying time.
+        b : float
+            Constant offset.
+
+        Returns
+        -------
+        ndarray
+            Time value(s) t satisfying the equation, or NaN where undefined or negative.
+        """
         if np.isclose(a, 0.0):
             return np.full(val.shape, np.nan)
         t = (val - b) / a
@@ -220,6 +319,19 @@ class LSMADParabola:
         return t
 
     def find_t_quad(self, val):
+        """
+        Solve for time t at which the quadratic z(t) equals a specified value.
+
+        Parameters
+        ----------
+        val : ndarray
+            Target value(s) of the quadratic function.
+
+        Returns
+        -------
+        ndarray
+            Nonnegative solution(s) for time t, or NaN where no valid solution exists.
+        """
         a = self.theta[4]
         b = self.theta[5]
         c = self.theta[6] - val
@@ -235,6 +347,24 @@ class LSMADParabola:
         return t
 
     def calc_goal(self, eff_quat, eff_pos):
+        """
+        Compute an intercept goal position inside the bounding box and a goal quaternion
+        that minimally rotates the current end-effector x-axis toward the goal direction.
+
+        Parameters
+        ----------
+        eff_quat : array-like
+            Current end-effector orientation as a quaternion [x, y, z, w].
+        eff_pos : array-like
+            Current end-effector position as [x, y, z].
+
+        Returns
+        -------
+        tuple[ndarray, ndarray]
+            (goal_pos, goal_quat) where goal_pos is the computed 3D intercept position
+            (or NaNs if no valid intercept exists) and goal_quat is the corresponding
+            goal orientation quaternion.
+        """
         if np.any(np.isnan(self.theta)):
             return np.array([np.nan, np.nan, np.nan]), eff_quat
         eff_R = tf.quaternion_matrix(eff_quat)[:3, :3]
