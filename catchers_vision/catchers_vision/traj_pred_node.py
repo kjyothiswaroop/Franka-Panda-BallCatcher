@@ -1,17 +1,16 @@
 """Define node for trajectory prediction."""
+from catchers_vision.trajectory_prediction import LSMADParabola
+from geometry_msgs.msg import Point, PoseStamped, TransformStamped
 import matplotlib.pyplot as plt
 import numpy as np
-import rclpy
-from geometry_msgs.msg import Point, PoseStamped, TransformStamped
 from rcl_interfaces.msg import ParameterDescriptor, ParameterType
+import rclpy
 from rclpy.node import Node
 from std_srvs.srv import Empty
 from tf2_ros import TransformBroadcaster, TransformException
 from tf2_ros.buffer import Buffer
 from tf2_ros.transform_listener import TransformListener
 from visualization_msgs.msg import Marker
-
-from catchers_vision.trajectory_prediction import LSMADParabola
 
 
 class TrajPred(Node):
@@ -32,9 +31,9 @@ class TrajPred(Node):
 
         Services
         --------
-        plot (std_srvs/srv/Empty)
+        plot : std_srvs/srv/Empty
             Plot the measured points and current predicted trajectory using Matplotlib.
-        reset_throw (std_srvs/srv/Empty)
+        reset_throw : std_srvs/srv/Empty
             Reset the trajectory predictor state for a new throw.
         """
         super().__init__('traj_pred')
@@ -161,7 +160,11 @@ class TrajPred(Node):
         self.starting_pos = [0.307506, -0.0001418, 0.2]
 
     def timer_callback(self):
-        """Listens to base - ball TF and publishes to goal pose topic/TF and markers."""
+        """
+        Timer Callback.
+
+        Listens to the TF between base and ball and publishes a goal_pose.
+        """
         if self.default_val is None:
             init_frame = self.query_frame('base', 'ball')
             if init_frame is not None:
@@ -255,7 +258,6 @@ class TrajPred(Node):
                 self.publish_marker('pred')
                 self.publish_parab = True
 
-
     def plot_callback(self, request, response):
         """
         Plot the measured ball positions and the current predicted parabolic trajectory.
@@ -271,6 +273,7 @@ class TrajPred(Node):
         -------
         std_srvs/srv/Empty_Response
             The unmodified service response.
+
         """
         goal, quat = self.rls.calc_goal([0.0, 0.0, 0.0, 1.0])
         t = np.linspace(0, self.t[-1])
@@ -334,6 +337,7 @@ class TrajPred(Node):
         -------
         None
             Appends the point to the corresponding marker list.
+
         """
         p = Point()
         p.x = x
@@ -358,6 +362,7 @@ class TrajPred(Node):
         -------
         None
             Publishes the marker message to the corresponding topic.
+
         """
         m = Marker()
         m.header.frame_id = 'base'
@@ -395,6 +400,7 @@ class TrajPred(Node):
         -------
         std_srvs/srv/Empty_Response
             The unmodified service response.
+
         """
         self.get_logger().info('Resetting trajectory predictor for new throw')
 

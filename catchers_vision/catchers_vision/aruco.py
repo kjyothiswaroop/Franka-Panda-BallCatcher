@@ -128,10 +128,12 @@ class arucoNode(Node):
         Parameters
         ----------
         info_msg : sensor_msgs/msg/CameraInfo
+            Camera Info message.
 
         Returns
         -------
         None
+
         """
         self.info_msg = info_msg
         self.intrinsic_mat = np.reshape(np.array(self.info_msg.k), (3, 3))
@@ -144,10 +146,12 @@ class arucoNode(Node):
         Parameters
         ----------
         img_msg : sensor_msgs/msg/Image
+            Raw image message from the camera.
 
         Returns
         -------
         None
+
         """
         if self.info_msg is None:
             return
@@ -243,7 +247,7 @@ class arucoNode(Node):
             )
 
             if self.publish_tf:
-                self._publish_transform(
+                self.publish_transform(
                     pose, marker_id[0], markers.header.frame_id, img_msg.header.stamp
                 )
 
@@ -253,7 +257,7 @@ class arucoNode(Node):
         self.markers_pub.publish(markers)
         self.image_pub.publish(final_image)
 
-    def _publish_transform(self, pose, marker_id, frame_id, stamp):
+    def publish_transform(self, pose, marker_id, frame_id, stamp):
         """
         Publish the aruco marker transform to the TF tree.
 
@@ -273,7 +277,8 @@ class arucoNode(Node):
 
         Returns
         -------
-        None 
+        None
+
         """
         transform = TransformStamped()
         transform.header.stamp = stamp

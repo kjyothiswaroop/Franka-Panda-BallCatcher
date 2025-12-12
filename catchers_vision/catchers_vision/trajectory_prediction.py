@@ -19,6 +19,7 @@ def angle_between(a, b):
     -------
     float
         Angle between the two vectors in radians.
+
     """
     dot = np.clip(np.dot(a, b), -1.0, 1.0)
     return np.arccos(dot)
@@ -58,7 +59,7 @@ class LSMADParabola:
 
     def LS_MAD(self, t, x, y, z, N_best=3, k=3, use_recency_weights=True):
         """
-        Perform LS-MAD fitting of a 3D parabolic trajectory using optional
+        Perform LS-MAD fitting of a 3D parabolic trajectory using optional \
         recency-weighted least squares.
 
         Parameters
@@ -82,6 +83,7 @@ class LSMADParabola:
         -------
         None
             Updates internal trajectory parameters and gating state.
+
         """
         x = np.array(x)
         y = np.array(y)
@@ -176,7 +178,6 @@ class LSMADParabola:
                 not np.isnan(self.theta).any()):
             self.v_gate_active = True
 
-
     def update(self, x, y, z, t):
         """
         Update the trajectory estimate with a new 3D measurement LS-MAD fitting.
@@ -197,6 +198,7 @@ class LSMADParabola:
         ndarray
             Current trajectory parameter estimate, or NaNs if insufficient data
             is available.
+
         """
         pos = np.array([x, y, z])
         if (
@@ -239,7 +241,7 @@ class LSMADParabola:
         return self.theta
 
     def reset(self):
-        """Resets feilds for another throw."""
+        """Reset function to reset field for next throw."""
         self.t_i = None
         self.meas_prev = None
         self.theta = self.theta_i.copy()
@@ -262,6 +264,7 @@ class LSMADParabola:
         -------
         ndarray
             3D position(s) [x, y, z] corresponding to the given time value(s).
+
         """
         x = self.theta[0] * t + self.theta[1]
         y = self.theta[2] * t + self.theta[3]
@@ -283,6 +286,7 @@ class LSMADParabola:
         -------
         ndarray of bool
             Boolean mask indicating which points lie inside the bounding box.
+
         """
         x, y, z = pts[..., 0], pts[..., 1], pts[..., 2]
         return (
@@ -311,6 +315,7 @@ class LSMADParabola:
         -------
         ndarray
             Time value(s) t satisfying the equation, or NaN where undefined or negative.
+
         """
         if np.isclose(a, 0.0):
             return np.full(val.shape, np.nan)
@@ -331,6 +336,7 @@ class LSMADParabola:
         -------
         ndarray
             Nonnegative solution(s) for time t, or NaN where no valid solution exists.
+
         """
         a = self.theta[4]
         b = self.theta[5]
@@ -348,7 +354,7 @@ class LSMADParabola:
 
     def calc_goal(self, eff_quat, eff_pos):
         """
-        Compute an intercept goal position inside the bounding box and a goal quaternion
+        Compute an intercept goal position inside the bounding box and a goal quaternion\
         that minimally rotates the current end-effector x-axis toward the goal direction.
 
         Parameters
@@ -364,6 +370,7 @@ class LSMADParabola:
             (goal_pos, goal_quat) where goal_pos is the computed 3D intercept position
             (or NaNs if no valid intercept exists) and goal_quat is the corresponding
             goal orientation quaternion.
+
         """
         if np.any(np.isnan(self.theta)):
             return np.array([np.nan, np.nan, np.nan]), eff_quat
@@ -445,7 +452,7 @@ if __name__ == '__main__':
     y_pred = model[2] * t + model[3]
     z_pred = model[4] * (t**2) + model[5] * t + model[6]
 
-    goal, quat = rls.calc_goal([0.0, 0.0, 0.0, 1.0],[0,0,0])
+    goal, quat = rls.calc_goal([0.0, 0.0, 0.0, 1.0], [0, 0, 0])
     print(quat)
     print(goal)
 
