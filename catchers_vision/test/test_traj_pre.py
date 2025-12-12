@@ -47,16 +47,20 @@ class TestTrajPre(unittest.TestCase):
         world_base_tf.transform.translation.z = 1.0
         self.static_broadcaster.sendTransform(world_base_tf)
 
+        self.d = 0.0
         self.broadcaster = TransformBroadcaster(self.node)
 
     def tearDown(self):
         self.node.destroy_node()
 
     def timer_callback(self):
+        self.d += 0.001
         base_ball_tf = TransformStamped()
         base_ball_tf.header.frame_id = 'base'
         base_ball_tf.child_frame_id = 'ball'
-        base_ball_tf.transform.translation.x = 1.0
+        base_ball_tf.transform.translation.x = 1.0 + self.d
+        base_ball_tf.transform.translation.y = 0.0
+        base_ball_tf.transform.translation.z = 1.0 + self.d
 
         time = self.node.get_clock().now().to_msg()
         base_ball_tf.header.stamp = time
@@ -73,17 +77,16 @@ class TestTrajPre(unittest.TestCase):
             10
         )
         timer = self.node.create_timer(
-            0.001,
+            0.01,
             self.timer_callback
         )
         try:
             end_time = time.time() + 10
             while time.time() < end_time:
                 rclpy.spin_once(self.node, timeout_sec=1)
-                rclpy.spin_once(self.traj_pred_node, timeout_sec=1)
-                if len(goal_pose_buffer) > 30:
-                    break
-            self.assertGreater(len(goal_pose_buffer), 1)
+                # if len(goal_pose_buffer) > 30:
+                #     break
+            self.assertGreater(len(goal_pose_buffer), 30)
         finally:
             self.node.destroy_subscription(sub)
             self.node.destroy_timer(timer)
