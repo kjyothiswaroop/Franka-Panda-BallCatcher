@@ -26,8 +26,8 @@ class image_processor():
         """
         Convert the color space from BGR to HSV.
 
-        Args
-        ----
+        Parameters
+        ----------
         frame: np.array
             Image frame to be converted
 
@@ -35,6 +35,7 @@ class image_processor():
         -------
         hsv: np.array
             Image in HSV color space
+
         """
         hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
         return hsv
@@ -43,8 +44,8 @@ class image_processor():
         """
         Create a color mask of specifed ball type.
 
-        Args
-        ----
+        Parameters
+        ----------
         image : np.array
             BGR color space version of the image
 
@@ -80,8 +81,8 @@ class image_processor():
         """
         Create a color mask of specifed ball type.
 
-        Args
-        ----
+        Parameters
+        ----------
         color_img : np.array
             BGR color space version of the image
 
@@ -126,18 +127,18 @@ class image_processor():
         """
         Locate centroid of ball in 3d space.
 
-        Args
-        ----
+        Parameters
+        ----------
         mask : np.array
             color masked version of the image
 
-        cvt_img : np.array
+        cvt_image : np.array
             HSV color space version of the image
 
         depth_img : np.array
             array of depth values
 
-        ball : (fx, fy, cx, cy)
+        intr : (fx, fy, cx, cy)
             Inherent values to determine camera distances
 
         Returns
@@ -146,7 +147,7 @@ class image_processor():
             Location of the x, y, and z of the ball
 
         cvt_image : np.array
-            Image with contours drawn on
+            Return image with the contours drawn on it
 
         """
         # qqret, thresh = cv2.threshold(mask, 127, 255, 0)
@@ -188,8 +189,8 @@ class image_processor():
         """
         Capture frame function to clip depth.
 
-        Args
-        ----
+        Parameters
+        ----------
         color_img : np.array
             color version of the image
 
@@ -222,8 +223,8 @@ class image_processor():
         """
         Filter detection boxes for Moving Balls.
 
-        Args
-        ----
+        Parameters
+        ----------
         results : Results()[]
             list of results from yolo model
 
@@ -258,8 +259,8 @@ class image_processor():
         """
         Extract depth from a point in an image with intrinsics.
 
-        Args
-        ----
+        Parameters
+        ----------
         cx : int
             x-coordinate of ball centroid
 
@@ -276,6 +277,7 @@ class image_processor():
         -------
         centroid : np.aray
             3d center point of the array
+
         """
         if cx is not None:
             depth = depth_img[cy, cx] * 0.001
