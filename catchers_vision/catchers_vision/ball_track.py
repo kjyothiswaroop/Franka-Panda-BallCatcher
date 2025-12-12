@@ -60,8 +60,7 @@ class BallTrack(Node):
             '/camera/camera/color/camera_info',
             ParameterDescriptor(type=ParameterType.PARAMETER_STRING)
         )
-        # self.declare_parameter('model', value='ball-detect-3.pt')
-
+        
         #Read param values. # noqa: E26
         self.mode = (
             self.get_parameter('mode').get_parameter_value().string_value
@@ -76,7 +75,6 @@ class BallTrack(Node):
         else:
             self.get_logger().info(f"Model file FOUND: {model_path}")
         self.model = YOLO(model_path)
-        # self.model = YOLO(self.get_parameter('model').get_parameter_value().string_value)
         self.image_topic = self.get_parameter('image_topic').value
         self.color_image_topic = self.get_parameter('color_image_topic').value
         self.depth_image_topic = self.get_parameter('depth_image_topic').value
