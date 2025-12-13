@@ -56,9 +56,9 @@ class TestTrajPre(unittest.TestCase):
         base_ball_tf = TransformStamped()
         base_ball_tf.header.frame_id = 'base'
         base_ball_tf.child_frame_id = 'ball'
-        base_ball_tf.transform.translation.x = 1.0 + self.d
+        base_ball_tf.transform.translation.x = 1.0 - self.d
         base_ball_tf.transform.translation.y = 0.0
-        base_ball_tf.transform.translation.z = 1.0 + self.d
+        base_ball_tf.transform.translation.z = 1.0 - self.d
 
         time = self.node.get_clock().now().to_msg()
         base_ball_tf.header.stamp = time
