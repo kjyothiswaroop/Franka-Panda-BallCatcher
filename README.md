@@ -123,7 +123,7 @@ The following improvements were tried to overcome the limitations mentioned abov
 ## Demo Videos
 Video demonstation of the project:
 
-[catchingball](https://github.com/ME495-EmbeddedSystems/final-project-catchers/issues/2#issue-3725249139)
+[catchingball](https://github.com/user-attachments/assets/5c5c8cdc-81b9-49b4-8460-3c235efb2a31)
 
 ## Directory Structure
 
