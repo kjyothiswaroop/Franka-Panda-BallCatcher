@@ -1,17 +1,16 @@
-import unittest
-
-from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import PoseStamped, TransformStamped
 from launch import LaunchDescription
 from launch_ros.actions import Node
+from tf2_ros import TransformBroadcaster
+from tf2_ros.static_transform_broadcaster import StaticTransformBroadcaster
+
+from catchers_vision.traj_pred_node import TrajPred
+
 import launch_testing
 import pytest
 import rclpy
 import time
-
-from catchers_vision.traj_pred_node import TrajPred
-from geometry_msgs.msg import TransformStamped
-from tf2_ros import TransformBroadcaster
-from tf2_ros.static_transform_broadcaster import StaticTransformBroadcaster
+import unittest
 
 
 @pytest.mark.rostest
@@ -36,8 +35,7 @@ class TestTrajPre(unittest.TestCase):
         rclpy.shutdown()
 
     def setUp(self):
-        self.node = rclpy.create_node('traj_pred_node')
-        self.traj_pred_node = TrajPred()
+        self.node = rclpy.create_node('test_node')
 
         self.static_broadcaster = StaticTransformBroadcaster(self.node)
         world_base_tf = TransformStamped()
@@ -68,7 +66,7 @@ class TestTrajPre(unittest.TestCase):
         self.broadcaster.sendTransform(base_ball_tf)
 
     def test_trajectory_prediction(self):
-        """Check whether goal pose messages published"""
+        """Check whether goal pose messages published."""
         goal_pose_buffer = []
         sub = self.node.create_subscription(
             PoseStamped,
@@ -84,8 +82,9 @@ class TestTrajPre(unittest.TestCase):
             end_time = time.time() + 10
             while time.time() < end_time:
                 rclpy.spin_once(self.node, timeout_sec=1)
-                # if len(goal_pose_buffer) > 30:
-                #     break
+                # Comment this if statement to see what happens in Rviz
+                if len(goal_pose_buffer) > 30:
+                    break
             self.assertGreater(len(goal_pose_buffer), 30)
         finally:
             self.node.destroy_subscription(sub)
