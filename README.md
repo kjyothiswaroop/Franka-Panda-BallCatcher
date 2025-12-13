@@ -121,7 +121,9 @@ The following improvements were tried to overcome the limitations mentioned abov
     - The YOLO model we trained didnt work as expected on ZED, whereas on the Realsense it showed a great performance(Note: the YOLO was retrained for images from the ZED camera only and yet it didnt work well).
 
 ## Demo Videos
+Video demonstation of the project:
 
+[catchingball](https://github.com/ME495-EmbeddedSystems/final-project-catchers/issues/2#issue-3725249139)
 
 ## Directory Structure
 
