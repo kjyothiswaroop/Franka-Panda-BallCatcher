@@ -2,8 +2,16 @@
 
 This repository holds the package for the ME-450 final project of Team Catchers.
 
+Authors : [Anunth Ramaswami](https://github.com/anunthramaswami2030), [Kasina Jyothi Swaroop](https://github.com/kjyothiswaroop), [Kyle Thompson](https://github.com/KThompson2002) , [Zixin Ye](https://github.com/zixinyenu)
+
+## Project Overview
+
+The project aims at catching a ball using a Franka Emika Robot Arm. The ball is tracked using a Realsense camera and a trajectory prediction node predicts the pose of the ball at the instant it intersects with a designated plane and command the robot to move to the goal_pose.
+
 ## Prerequisites
 - The `realsense2_camera` driver installed (from Intel RealSense ROS2 package).
+- The `ultralytics` package installed using [Ultralytics](https://nu-msr.github.io/ros_notes/ros2/computer_vision.html#ultralytics-yolo-1-P-1)
+- The `modern_robotics` library following similar instructions as Ultralytics.
 - A RealSense camera physically connected to the machine and accessible by the driver.
 - Clone and build the packages:
   ```bash
@@ -16,7 +24,26 @@ This repository holds the package for the ME-450 final project of Team Catchers.
   source install/setup.bash
   ```
 
-## Quickstart
+## How to run
+
+1. Plug in the RealSense camera into your machine.
+
+2. In another terminal (with the catchers_ws sourced), launch the `detect.launch.xml`:
+
+- If camera calibration is required(usually when camera is moved), attach the ArUco marker of ID `25` from the family
+  `DICT_6X6_1000` at the end effector of the franka robot arm and run the command below and follow the calibration procedure as described in [Camera_Calibration](https://github.com/kjyothiswaroop/easy_handeye2/blob/master/README.md)
+
+    ```bash
+    ros2 launch catchers_vision detect.launch.xml demo:=false calibrate:=true
+    ```
+
+- If calibration file already exists at `.ros2/easy_handeye2/calibrations/my_eob_calib.calib`, then run the below command to start detecting the ball and publishing transforms.
+
+    ```bash
+    ros2 launch catchers_vision detect.launch.xml demo:=false calibrate:=false
+    ```
+
+## Usage of the Launch file
 The `catchers_vision` package has one important launch file `detect.launch.xml.`
 - It expects two parameters which are :
     - `demo` (default value = true)
@@ -61,26 +88,40 @@ The `catchers_vision` package has one important launch file `detect.launch.xml.`
 
             - Publishes the detected ball in the image with the centroid on a new ROS2 topic.
 
+## Project Architecture
 
+![Project Architechture](Architechture.png)
 
-## How to run
+## Limitations and Future Scope
 
-1. Plug in the RealSense camera into your machine.
+### Current Limitations
+The project works as expected but the robot will not be able to catch every ball thrown within its workspace due to the following reasons:
 
-2. In another terminal (with the catchers_ws sourced), launch the `detect.launch.xml`:
+1) Timing
+    - The ball is in flight for only about ~ 1 sec.
+    - The Franka Emika Panda Robot takes about ~0.56 sec to move to a goal in its planar workspace at maximum velocity and acceleration scaling using the cartesian planning.
+    - The trajectory predictor needs to wait for sometime to get accurate measurements to give an accurate goal_pose.
 
-- If camera calibration is required(usually when camera is moved), attach the ArUco marker of ID `25` from the family
-  `DICT_6X6_1000` at the end effector of the franka robot arm and run the command below and follow the calibration procedure as described in [Camera_Calibration](https://github.com/kjyothiswaroop/easy_handeye2/blob/master/README.md)
+2) Camera
+    - The realsense camera depth range is short thus limiting us to throw from regions closer to the robot and try and catch it.
+    - This directly impacts our ability to throw the ball from farther which would allow it to be in flight for longer while getting reliable detections.
 
-    ```bash
-    ros2 launch catchers_vision detect.launch.xml demo:=false calibrate:=true
-    ```
+### Improvements tried
+The following improvements were tried to overcome the limitations mentioned above:
 
-- If calibration file already exists at `.ros2/easy_handeye2/calibrations/my_eob_calib.calib`, then run the below command to start detecting the ball and publishing transforms.
+1) Plan Caching
+    - We save plans apriori by commanding the robot to go to multiple places in the desired workspace collect the plans and query them at runtime.
+    - This did not prove to be very helpful because we observed that the planning only takes about ~0.014 sec and the execution is where the robot is unable to catchup with the ball.
 
-    ```bash
-    ros2 launch catchers_vision detect.launch.xml demo:=false calibrate:=false
-    ```
+2) Zed Camera
+    - The Zed2i camera provides a better depth range and can operate at a higher fps while not loosing resolution.
+    - The ZED-SDK offers inbuilt YOLO models which are optimized to work faster on the ZED camera.
+    - The ZED-ROS2 wrapper is not supported for kilted, hence we ended up implementing our own wrapper to extract color,depth images and camera info.
+    - This did not help either because the way wrapper was implemented in python, we were missing depth frames multiple times and thus not getting reliable detections.
+    - The YOLO model we trained didnt work as expected on ZED, whereas on the Realsense it showed a great performance(Note: the YOLO was retrained for images from the ZED camera only and yet it didnt work well).
+
+## Demo Videos
+
 
 ## Directory Structure
 
