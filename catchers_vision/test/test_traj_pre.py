@@ -1,16 +1,16 @@
+import time
+import unittest
+
 from geometry_msgs.msg import PoseStamped, TransformStamped
 from launch import LaunchDescription
 from launch_ros.actions import Node
-from tf2_ros import TransformBroadcaster
-from tf2_ros.static_transform_broadcaster import StaticTransformBroadcaster
-
-from catchers_vision.traj_pred_node import TrajPred
 
 import launch_testing
 import pytest
 import rclpy
-import time
-import unittest
+
+from tf2_ros import TransformBroadcaster
+from tf2_ros.static_transform_broadcaster import StaticTransformBroadcaster
 
 
 @pytest.mark.rostest

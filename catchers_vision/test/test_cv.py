@@ -1,11 +1,11 @@
-from geometry_msgs.msg import PointStamped
+import unittest
+
 from launch import LaunchDescription
 from launch_ros.actions import Node
 
 import launch_testing
 import pytest
 import rclpy
-import unittest
 
 
 @pytest.mark.rostest
