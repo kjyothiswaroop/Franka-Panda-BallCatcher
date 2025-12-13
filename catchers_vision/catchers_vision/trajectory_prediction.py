@@ -1,4 +1,3 @@
-import matplotlib.pyplot as plt
 import modern_robotics as mr
 import numpy as np
 import tf_transformations as tf
@@ -421,45 +420,3 @@ class LSMADParabola:
         T_g = np.eye(4)
         T_g[:3, :3] = R_g
         return self.pos_at(t_hit), tf.quaternion_from_matrix(T_g)
-
-
-if __name__ == '__main__':
-    t = np.linspace(0, 1, 10)
-    vx = -2
-    vy = 0
-    x_vals = vx * t + 0.4
-    y_vals = vy * t
-    z_vals = 1 - 4.9 * t**2
-    noise_std = 0.01
-
-    x_n = x_vals + np.random.randn(*x_vals.shape) * noise_std
-    y_n = y_vals + np.random.randn(*y_vals.shape) * noise_std
-    z_n = z_vals + np.random.randn(*z_vals.shape) * noise_std
-
-    x_n[0] += 2
-    x_n[6] += 5
-    x_n[9] -= 3
-
-    rls = LSMADParabola([-0.4, 0.4], [-0.4, 0.4], [-0.4, 0.4])
-
-    for i in range(7):
-        model = rls.update(x_n[i], y_n[i], z_n[i], t[i])
-
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-
-    x_pred = model[0] * t + model[1]
-    y_pred = model[2] * t + model[3]
-    z_pred = model[4] * (t**2) + model[5] * t + model[6]
-
-    goal, quat = rls.calc_goal([0.0, 0.0, 0.0, 1.0], [0, 0, 0])
-    print(quat)
-    print(goal)
-
-    ax.plot(x_vals, y_vals, z_vals, linewidth=2)
-    ax.plot(x_pred, y_pred, z_pred, linewidth=2)
-    ax.scatter(x_n, y_n, z_n)
-    ax.scatter(goal[0], goal[1], goal[2])
-    plt.axis('equal')
-    plt.legend(['true', 'pred'])
-    plt.show()
