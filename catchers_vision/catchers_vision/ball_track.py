@@ -1,4 +1,7 @@
 from enum import auto, Enum
+import os
+
+from ament_index_python.packages import get_package_share_directory
 
 from cv_bridge import CvBridge
 from geometry_msgs.msg import PointStamped, TransformStamped
@@ -57,7 +60,6 @@ class BallTrack(Node):
             '/camera/camera/color/camera_info',
             ParameterDescriptor(type=ParameterType.PARAMETER_STRING)
         )
-        self.declare_parameter('model', value='ball-detect-3.pt')
 
         #Read param values. # noqa: E26
         self.mode = (
@@ -66,7 +68,15 @@ class BallTrack(Node):
         self.ball = (
             self.get_parameter('ball_type').get_parameter_value().string_value
         )
-        self.model = YOLO(self.get_parameter('model').get_parameter_value().string_value)
+        pkg_share = get_package_share_directory('catchers_vision')
+        model_path = os.path.join(pkg_share, 'model', 'ball-detect-hr.pt')
+
+        if not os.path.exists(model_path):
+            self.get_logger().error(f'Model file does NOT exist: {model_path}')
+        else:
+            self.get_logger().info(f'Model file FOUND: {model_path}')
+
+        self.model = YOLO(model_path)
         self.image_topic = self.get_parameter('image_topic').value
         self.color_image_topic = self.get_parameter('color_image_topic').value
         self.depth_image_topic = self.get_parameter('depth_image_topic').value
@@ -125,7 +135,13 @@ class BallTrack(Node):
             self.state = VisionState.OPENCV
 
     def timer_callback(self):
-        """Activates ball tracking."""
+        """
+        Activates ball tracking.
+
+        Offers two modes of tracking:
+        1) OpenCV
+        2) YOLO Model.
+        """
         if self.state == VisionState.OPENCV:
             # self.get_logger().info('OpenCV mode')
             if self.got_intrinsics:
@@ -186,7 +202,19 @@ class BallTrack(Node):
                 self.broadcast_ball(location)
 
     def broadcast_ball(self, location):
-        """Broadcast ball tf to tf tree."""
+        """
+        Broadcast ball tf to tf-tree.
+
+        Parameters
+        ----------
+        location : np.array
+            centroid cx, cy, and cz of ball in 3d space
+
+        Returns
+        -------
+        None
+
+        """
         pt = PointStamped()
         pt.header.stamp = self.get_clock().now().to_msg()
         pt.point.x = location[0]
@@ -205,7 +233,19 @@ class BallTrack(Node):
         self.broadcaster.sendTransform(transform)
 
     def camera_info_callback(self, msg):
-        """Camera info callback."""
+        """
+        Camera info callback.
+
+        Parameters
+        ----------
+        msg : sensor_msgs/msg/CameraInfo
+            List of intrinsic camera parameters.
+
+        Returns
+        -------
+        None
+
+        """
         fx = msg.k[0]
         fy = msg.k[4]
         cx = msg.k[2]
@@ -216,7 +256,22 @@ class BallTrack(Node):
             self.got_intrinsics = True
 
     def synced_callback(self, color_msg, depth_msg):
-        """Sync callback for color and depth."""
+        """
+        Sync callback for color and depth.
+
+        Parameters
+        ----------
+        color_msg : sensor_msgs/msg/Image
+            image color array
+
+        depth_msg :sensor_msgs/msg/Image
+            depth image
+
+        Returns
+        -------
+        None
+
+        """
         self.color_img = color_msg
         self.depth_img = depth_msg
 

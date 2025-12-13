@@ -1,8 +1,10 @@
+"""Define node for trajectory prediction."""
+from catchers_vision.trajectory_prediction import LSMADParabola
+from geometry_msgs.msg import Point, PoseStamped, TransformStamped
 import matplotlib.pyplot as plt
 import numpy as np
-import rclpy
-from geometry_msgs.msg import Point, PoseStamped, TransformStamped
 from rcl_interfaces.msg import ParameterDescriptor, ParameterType
+import rclpy
 from rclpy.node import Node
 from std_srvs.srv import Empty
 from tf2_ros import TransformBroadcaster, TransformException
@@ -10,14 +12,30 @@ from tf2_ros.buffer import Buffer
 from tf2_ros.transform_listener import TransformListener
 from visualization_msgs.msg import Marker
 
-from catchers_vision.trajectory_prediction import LSMADParabola
-
 
 class TrajPred(Node):
     """Inference trajectory of ball."""
 
     def __init__(self):
-        """Initialize the ball tracking node."""
+        """
+        Node for real-time ball trajectory prediction and goal pose generation.
+
+        Publishes
+        ---------
+        goal_pose : geometry_msgs/msg/PoseStamped
+            Predicted interception pose for the robot end effector.
+        ball_actual_topic : visualization_msgs/msg/Marker
+            Marker visualization of measured ball positions.
+        ball_pred_topic : visualization_msgs/msg/Marker
+            Marker visualization of the predicted ball trajectory.
+
+        Services
+        --------
+        plot : std_srvs/srv/Empty
+            Plot the measured points and current predicted trajectory using Matplotlib.
+        reset_throw : std_srvs/srv/Empty
+            Reset the trajectory predictor state for a new throw.
+        """
         super().__init__('traj_pred')
         self.get_logger().info('traj_pred')
 
@@ -142,6 +160,11 @@ class TrajPred(Node):
         self.starting_pos = [0.307506, -0.0001418, 0.2]
 
     def timer_callback(self):
+        """
+        Timer Callback.
+
+        Listens to the TF between base and ball and publishes a goal_pose.
+        """
         if self.default_val is None:
             init_frame = self.query_frame('base', 'ball')
             if init_frame is not None:
@@ -235,9 +258,23 @@ class TrajPred(Node):
                 self.publish_marker('pred')
                 self.publish_parab = True
 
-
     def plot_callback(self, request, response):
-        """Plot callback."""
+        """
+        Plot the measured ball positions and the current predicted parabolic trajectory.
+
+        Parameters
+        ----------
+        request : std_srvs/srv/Empty_Request
+            Service request (unused).
+        response : std_srvs/srv/Empty_Response
+            Service response returned after plotting.
+
+        Returns
+        -------
+        std_srvs/srv/Empty_Response
+            The unmodified service response.
+
+        """
         goal, quat = self.rls.calc_goal([0.0, 0.0, 0.0, 1.0])
         t = np.linspace(0, self.t[-1])
         model = self.theta
@@ -282,7 +319,26 @@ class TrajPred(Node):
             return None
 
     def add_point(self, x, y, z, pub_type):
-        """Add points to array to publish Markers."""
+        """
+        Add a 3D point to the marker buffer for actual or predicted data.
+
+        Parameters
+        ----------
+        x : float
+            X coordinate of the point.
+        y : float
+            Y coordinate of the point.
+        z : float
+            Z coordinate of the point.
+        pub_type : str
+            Marker type identifier ('actual' or 'pred').
+
+        Returns
+        -------
+        None
+            Appends the point to the corresponding marker list.
+
+        """
         p = Point()
         p.x = x
         p.y = y
@@ -293,7 +349,21 @@ class TrajPred(Node):
             self.pred.append(p)
 
     def publish_marker(self, pub_type):
-        """Marker publisher."""
+        """
+        Publish a visualization marker for actual or predicted ball positions.
+
+        Parameters
+        ----------
+        pub_type : str
+            Marker type identifier ('actual' or 'pred') determining the data source
+            and color.
+
+        Returns
+        -------
+        None
+            Publishes the marker message to the corresponding topic.
+
+        """
         m = Marker()
         m.header.frame_id = 'base'
         m.ns = pub_type
@@ -316,6 +386,22 @@ class TrajPred(Node):
             self.ball_pred_pub.publish(m)
 
     def reset_callback(self, request, response):
+        """
+        Reset the trajectory predictor state for new throw.
+
+        Parameters
+        ----------
+        request : std_srvs/srv/Empty_Request
+            Service request (unused).
+        response : std_srvs/srv/Empty_Response
+            Service response returned after resetting state.
+
+        Returns
+        -------
+        std_srvs/srv/Empty_Response
+            The unmodified service response.
+
+        """
         self.get_logger().info('Resetting trajectory predictor for new throw')
 
         self.rls.reset()
@@ -351,7 +437,7 @@ class TrajPred(Node):
 
 
 def main(args=None):
-    """Entrypoint for pick_node."""
+    """Entrypoint for traj_pred_node."""
     rclpy.init(args=args)
     node = TrajPred()
     rclpy.spin(node)

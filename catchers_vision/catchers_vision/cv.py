@@ -3,6 +3,7 @@ import numpy as np
 
 
 class image_processor():
+    """Image processing class for images in ROS."""
 
     def __init__(self):
         """Image Processing class."""
@@ -22,12 +23,47 @@ class image_processor():
         self.depth_scale = 0.001
 
     def convert_color(self, frame):
-        """Convert color space from bgr to hsv."""
+        """
+        Convert the color space from BGR to HSV.
+
+        Parameters
+        ----------
+        frame: np.array
+            Image frame to be converted
+
+        Returns
+        -------
+        hsv: np.array
+            Image in HSV color space
+
+        """
         hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
         return hsv
 
     def threshold_ball(self, image, frame, ball):
-        """Isolate ball."""
+        """
+        Create a color mask of specifed ball type.
+
+        Parameters
+        ----------
+        image : np.array
+            BGR color space version of the image
+
+        frame : np.array
+            HSV color space version of the image
+
+        ball : string
+            Describes the type of ball thresholded for
+
+        Returns
+        -------
+        bitwise : np.array
+            Bitwise conjunction of the image and it's mask
+
+        mask : np.array
+            Color thresholded binary representation of the image
+
+        """
         if ball == 'tennis':
             mask = cv2.inRange(frame, self.lower_tennis, self.upper_tennis)
         elif ball == 'green':
@@ -42,7 +78,32 @@ class image_processor():
         ), mask
 
     def color_threshold(self, color_img, depth_img, intr, ball):
-        """Check frame for ball and publishes if present."""
+        """
+        Create a color mask of specifed ball type.
+
+        Parameters
+        ----------
+        color_img : np.array
+            BGR color space version of the image
+
+        depth_img : np.array
+            HSV color space version of the image
+
+        intr : (fx, fy, cx, cy)
+            Inherent values to determine camera distances
+
+        ball : string
+            Describes the type of ball thresholded for
+
+        Returns
+        -------
+        centroid : np.array[3]
+            Location of the x, y, and z of the ball
+
+        image_processed : np.array
+            Image with mask, or outlined ball
+
+        """
         frame = self.capture_frame(color_img, depth_img)
         if frame is not None:
             gauss = cv2.GaussianBlur(frame, (11, 11), 0)
@@ -63,7 +124,32 @@ class image_processor():
             return None, None
 
     def find_ball(self, mask, cvt_image, depth_img, intr):
-        """Locate centroid of ball in 3d space."""
+        """
+        Locate centroid of ball in 3d space.
+
+        Parameters
+        ----------
+        mask : np.array
+            color masked version of the image
+
+        cvt_image : np.array
+            HSV color space version of the image
+
+        depth_img : np.array
+            array of depth values
+
+        intr : (fx, fy, cx, cy)
+            Inherent values to determine camera distances
+
+        Returns
+        -------
+        point_3d : np.array[3]
+            Location of the x, y, and z of the ball
+
+        cvt_image : np.array
+            Return image with the contours drawn on it
+
+        """
         # qqret, thresh = cv2.threshold(mask, 127, 255, 0)
         contours, hierarchy = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         h, w = mask.shape
@@ -100,7 +186,23 @@ class image_processor():
             return point_3d, cvt_image
 
     def capture_frame(self, color_img, depth_img):
-        """Capture frame function to clip depth."""
+        """
+        Capture frame function to clip depth.
+
+        Parameters
+        ----------
+        color_img : np.array
+            color version of the image
+
+        depth_img : np.array
+            array of depth values
+
+        Returns
+        -------
+        bg_removed : np.array
+            version of the image where depth is clipped
+
+        """
         if color_img is None or depth_img is None:
             return None
 
@@ -118,7 +220,26 @@ class image_processor():
         return bg_removed
 
     def yolo_find_ball(self, results, class_names):
-        """Utilize yolo to return location of moving ball if found."""
+        """
+        Filter detection boxes for Moving Balls.
+
+        Parameters
+        ----------
+        results : Results()[]
+            list of results from yolo model
+
+        class_names : dict{int: string}
+            HSV color space version of the image
+
+        Returns
+        -------
+        cx : int
+            x location of the ball
+
+        cy : int
+            y location of the ball
+
+        """
         if results.boxes is not None:
             for box in results.boxes:
                 cls_id = int(box.cls[0])
@@ -135,7 +256,29 @@ class image_processor():
             return None, None
 
     def depth_extract(self, cx, cy, depth_img, intr):
-        """Extract depth from points and depth img."""
+        """
+        Extract depth from a point in an image with intrinsics.
+
+        Parameters
+        ----------
+        cx : int
+            x-coordinate of ball centroid
+
+        cy : int
+            y-coordinate of ball centroid
+
+        depth_img : np.array
+            array of depth values
+
+        intr: (fx, fy, cx, cy)
+            Inherent values to determine camera distances
+
+        Returns
+        -------
+        centroid : np.aray
+            3d center point of the array
+
+        """
         if cx is not None:
             depth = depth_img[cy, cx] * 0.001
             fx, fy, cx0, cy0 = intr

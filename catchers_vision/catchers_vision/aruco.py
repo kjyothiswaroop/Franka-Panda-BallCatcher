@@ -15,7 +15,30 @@ import tf_transformations
 class arucoNode(Node):
 
     def __init__(self):
-        """Aruco Node."""
+        """
+        Aruco Node.
+
+        Node for detection of Aruco markers and publishing them on Rviz.
+
+        Publishers
+        ----------
+        aruco_poses : geometry_msgs/msg/PoseArray
+            Publishes the pose of the Aruco Marker.
+
+        aruco_markers : catchers_vision_interfaces/msg/ArucoMarkers
+            Publishes all the ids of detected markers and poses.
+
+        camera/camera/color/image_raw_axes : sensor_msgs/msg/Image
+            Publishes the raw image along with the axes of the aruco marker drawn.
+
+        Subscribers
+        -----------
+        camera/camera/color/camera_info : sensor_msgs/msg/Image
+            Subscribes to camera info topic of the camera.
+
+        camera/camera/color/image_raw : sensor_msgs/msg/Image
+            Subscribes to the raw image from the camera
+        """
         super().__init__('aruco_detect')
 
         # Parameter declaration # noqa: E26
@@ -99,13 +122,37 @@ class arucoNode(Node):
             raise
 
     def info_callback(self, info_msg):
-        """Info callback."""
+        """
+        Info callback for reading the CameraInfo.
+
+        Parameters
+        ----------
+        info_msg : sensor_msgs/msg/CameraInfo
+            Camera Info message.
+
+        Returns
+        -------
+        None
+
+        """
         self.info_msg = info_msg
         self.intrinsic_mat = np.reshape(np.array(self.info_msg.k), (3, 3))
         self.distortion = np.array(self.info_msg.d)
 
     def image_callback(self, img_msg):
-        """Image callback."""
+        """
+        Image callback to get the raw image from camera.
+
+        Parameters
+        ----------
+        img_msg : sensor_msgs/msg/Image
+            Raw image message from the camera.
+
+        Returns
+        -------
+        None
+
+        """
         if self.info_msg is None:
             return
 
@@ -173,9 +220,6 @@ class arucoNode(Node):
             if marker_int not in self.aruco_ids:
                 return
 
-        # cv2.imshow('camera', cv_image)
-        # cv2.waitKey(1)
-
         for i, marker_id in enumerate(ids):
             pose = Pose()
             tvec = tvecs[i].squeeze()
@@ -183,7 +227,6 @@ class arucoNode(Node):
             pose.position.y = float(tvec[1])
             pose.position.z = float(tvec[2])
 
-            # Convert rotation vector to quaternion
             rvec = rvecs[i].squeeze()
             rot_matrix = np.eye(4)
             rot_matrix[0:3, 0:3] = cv2.Rodrigues(rvec)[0]
@@ -204,17 +247,39 @@ class arucoNode(Node):
             )
 
             if self.publish_tf:
-                self._publish_transform(
+                self.publish_transform(
                     pose, marker_id[0], markers.header.frame_id, img_msg.header.stamp
                 )
 
         final_image = self.bridge.cv2_to_imgmsg(cv_image)
+
         self.poses_pub.publish(pose_array)
         self.markers_pub.publish(markers)
         self.image_pub.publish(final_image)
 
-    def _publish_transform(self, pose, marker_id, frame_id, stamp):
-        """Publish the aruco marker transform."""
+    def publish_transform(self, pose, marker_id, frame_id, stamp):
+        """
+        Publish the aruco marker transform to the TF tree.
+
+        Parameters
+        ----------
+        pose : geometry_msgs/msg/Pose
+            Pose of the marker.
+
+        marker_id : int64
+            Id of the marker.
+
+        frame_id : string
+            Frame of the camera the transform is published in.
+
+        stamp : float
+            Timestamp.
+
+        Returns
+        -------
+        None
+
+        """
         transform = TransformStamped()
         transform.header.stamp = stamp
         transform.header.frame_id = frame_id
