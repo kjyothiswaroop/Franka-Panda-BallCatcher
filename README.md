@@ -42,6 +42,20 @@ The project aims at catching a ball using a Franka Emika Robot Arm. The ball is 
     ```bash
     ros2 launch catchers_vision detect.launch.xml demo:=false calibrate:=false
     ```
+3. Call the service `pick_hoop` to pick up the hoop.
+   ```bash
+   ros2 service call /pick_hoop std_srvs/srv/Empty
+   ```
+4. Call the service `toggle` to move the robot from the ready position to the plane where it will catch the robot.
+   ```bash
+   ros2 service call /toggle std_srvs/srv/Empty
+   ```
+5. Call the service `reset_throw` to reset any stray predictions by the model and get ready for the new throw, this will remove all the previous detections and predictions of ball pose from Rviz.
+   ```bash
+   ros2 service call /reset_throw std_srvs/srv/Empty
+   ```
+And thats it, the Robot Arm is now ready to catch a ball!
+   
 
 ## Usage of the Launch file
 The `catchers_vision` package has one important launch file `detect.launch.xml.`
