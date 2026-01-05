@@ -1,4 +1,4 @@
-## ME450-FinalProject-Catchers (Group 1)
+## Franka-Panda-BallCatcher
 
 This repository holds the package for the ME-450 final project of Team Catchers.
 
